@@ -1,4 +1,4 @@
-import { DB,SenderOpts } from './core'
+import { DB } from './core'
 import _ from '../utils'
 
 interface IDbExts {
@@ -44,6 +44,8 @@ if(typeof Proxy !== undefined) {
             }
         }
     })
+} else {
+    
 }
 
 _.extend(DB,{

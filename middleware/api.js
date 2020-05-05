@@ -94,7 +94,7 @@ export default ({ dispatch }) => next => action => {
         next(actionWith({
             data,
             type: STATUS_SUCCESS
-        }))
+        }),false,true)
 
     }
 

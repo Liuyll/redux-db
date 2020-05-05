@@ -3,6 +3,7 @@ interface IUtils {
     safeJsonParse(target:string):object
     safeJsonStringify(target:object): string
     isSupportPreload():boolean
+    isArray<T=any>(t):t is Array<T>
 }
 
 function extend(target:unknown,exts:object) {
@@ -11,6 +12,9 @@ function extend(target:unknown,exts:object) {
     }
 }
 
+function isArray<T=any>(t:any):t is Array<T>{
+    return Object.prototype.toString.call(t) === '[object Array]'
+}
 
 function safeJsonParse(target:string):object{
     let ret:object
@@ -43,6 +47,7 @@ function isSupportPreload() {
 }
 
 const _:IUtils = {
+    isArray,
     extend,
     safeJsonParse,
     isSupportPreload,

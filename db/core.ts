@@ -11,11 +11,16 @@ interface ISenderHooks {
     after(data:unknown):any
 }
 
-interface ISender extends ISenderHooks,IPool<Sender>{
+interface ISender extends ISenderHooks,IPool<Sender>,ControlledPool{
     send()
     succeed()
     error(e:any)
     fetch(opts:CustomMustType)
+}
+
+interface ControlledPool {
+    autoRelease: boolean
+    persist():void
 }
 
 interface IPool<T> {
@@ -26,7 +31,12 @@ interface IPool<T> {
 type Before = (config:SenderOpts) => SenderOpts
 type After = (data:unknown) => any
 export type DbOpts = {
-    url:string,
+    // 标识race
+    name ?: string,
+    url ?: string,
+    urls ?: string[],
+    isCdnSelect ?: boolean,
+    // TODO: 支持在action里直接调用DB.race
     succ:Function,
     err:Function,
     before?:Before[],
@@ -68,11 +78,31 @@ function extendConfigs<T>(configs:T,...exts:object[]):T {
         }
     }
 
+    if(configs['baseUrl'] !== '' && configs['url']) {
+        let url = configs['url']
+
+        let isHttp = url.indexOf('http://')
+        let isHttps = url.indexOf('https://')
+
+        if(!~isHttp) {
+            let length = 'http://'.length
+            configs['url'] = configs['url'].substring(0,isHttp + length + 1) + configs['url'].substring(isHttp + length)
+        } else if(!~isHttps) {
+            let length = 'https://'.length
+            configs['url'] = configs['url'].substring(0,isHttps + length + 1) + configs['url'].substring(isHttps + length)
+        }
+    }
+
     return configs
 }
 
 export class DB implements IDB{
+    static defaults = {
+        baseUrl: ''
+    }
+
     static options = {}
+
     config:DbConfigs 
 
     constructor(configs:DbOpts) {
@@ -83,7 +113,37 @@ export class DB implements IDB{
         this.config = DB.configTransform(configs)
     }
     
+    /**
+     * fetch
+     * 兼容urls race | all发送
+     */
     execute() {
+        if(_.isArray(this.config)) {
+            return DB.all(this.config as any)
+        }
+        if(this.config.urls) {
+            let name = this.config.name
+            if(this.config.isCdnSelect && name) {
+                let url
+                if((url = window.sessionStorage.getItem(`__cdn_${name}`))) {
+                    delete this.config['urls']
+                    this.config.url = url
+                    return getSender(this.config).send()
+                }
+            }
+
+            let urls = this.config.urls
+            delete this.config['urls']
+            const fetchMap = urls.map(url => {
+                this.config.url = url
+                return {
+                    ...this.config
+                }
+            })
+
+            return DB.race(fetchMap as any)
+        }
+        
         // ajax
         return getSender(this.config).send()
     }
@@ -109,7 +169,7 @@ export class DB implements IDB{
             err: [],
             before: [],
             type: configs.type ? configs.type : 'GET'
-        } as any as DbConfigs,configs,DB.options)
+        } as any as DbConfigs,this.defaults,configs,DB.options)
     }
 
     static all(...requests:DbOpts[]) {
@@ -120,7 +180,9 @@ export class DB implements IDB{
         requests.forEach(r => {
             succ.push(r.succ)
             err.push(r.err)
+
             r.succ = noop
+            r.err = noop
         })
 
         return Promise.all(requests.map(r => getDB(r).execute())).then(datas => {
@@ -131,7 +193,7 @@ export class DB implements IDB{
         })
     }
 
-    static race(...requests:DbOpts[]) {
+    static race(requests:DbOpts[]) {
         const succ = []
         const err = []
         const raceMap = new Map()
@@ -140,7 +202,15 @@ export class DB implements IDB{
         requests.forEach((r,i) => {
             succ.push(r.succ)
             err.push(r.err)
+
+            // if cdnselect -> cache url
+            succ.forEach(s => s.unshift((__:any,url:string) => {
+                let name = r.name
+                r.isCdnSelect && name && window.sessionStorage.setItem(`__cdn_${name}`,url)
+            }))
+
             r.succ = noop
+            r.err = noop
 
             const raceFlag = Symbol()
             r['__race_key_'] = raceFlag
@@ -151,7 +221,7 @@ export class DB implements IDB{
             const { __race_key_ } = ret
             const index = raceMap.get(__race_key_)
 
-            ;(0,eval)(`${type}[${index}] && ${type}[${index}](ret)`)
+            type === 'succ' ? succ[index].forEach(cb => cb(ret,requests[index].url)) : err[index].forEach(cb => cb(ret))
         }
 
         return Promise.race(requests.map(r => getDB(r).execute())).then(data => {
@@ -192,6 +262,7 @@ export class DB implements IDB{
 }
 
 class Sender implements ISender {
+    autoRelease = false
     config:SenderOpts = null
     data = null
     err = null
@@ -206,6 +277,10 @@ class Sender implements ISender {
         this.config = config
     }
 
+    persist() {
+        this.autoRelease = false
+    }
+
     send() {
         this.config = this.before(this.config)
         return this.fetch(<CustomMustType>this.config).then(_ => {
@@ -215,11 +290,11 @@ class Sender implements ISender {
             this.after(this.data)
             this.succeed()
             // 注意放入池子的时机,如果需要可以调用persist保持
-            this.release()
+            this.autoRelease && this.release()
             return this.data
         }).catch(__ => {
             this.error(this.err)
-            return this.err
+            throw this.err
         })
     }
 
@@ -229,7 +304,7 @@ class Sender implements ISender {
 
     // transform data before processSucc callback
     after(data:unknown) {
-        this.data = this.config.after ? this.config.after.reduce((_data,cb) => cb(_data),data) : data
+        this.data = this.config.after ? this.config.after.reduce((_data,cb) => cb.call(this,_data),data) : data
     }
 
     succeed() {
@@ -237,7 +312,9 @@ class Sender implements ISender {
         try {
             let ret = null
             
-            let data = this.data
+            let data = {
+                ...this.data
+            }
             delete data.__race_key_
 
             this.config.succ.forEach(cb => {

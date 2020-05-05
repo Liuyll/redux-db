@@ -3,8 +3,8 @@ import { AjaxArgsType,RequestType } from './interface'
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
+
         const {
-            'Content-Type': ContentType,
             'with-credentials': withCredentials,
             headers = {},
             cache = 'default',
@@ -14,6 +14,8 @@ export function ajax(options:AjaxArgsType) {
             cancelToken
         } = options
 
+        const ContentType = headers['Content-Type'] || (headers['Content-Type'] = 'application/x-www-form-urlencoded')
+        
         if(cancelToken) {
             cancelToken(() => {
                 reject('__FETCH_CANCEL')
@@ -26,10 +28,10 @@ export function ajax(options:AjaxArgsType) {
             query = {
                 ...data,
                 ...query
-            } 
-            url = handleQuery(url,query)
+            }
+            if(Object.keys(data).length && Object.keys(query).length) url = handleQuery(url,query)
         } else {
-            data = formatData(type,data) as any
+            data = formatData(ContentType,data) as any
         } 
 
         if(typeof fetch === 'undefined') {
@@ -84,7 +86,8 @@ export function ajax(options:AjaxArgsType) {
                 cache,
                 credentials: handleCredentials(withCredentials)
             }
-            
+
+            console.log(headers)
             if(timeout) {
                 if(typeof AbortController !== 'undefined') {
                     const controller = new AbortController()
@@ -163,22 +166,25 @@ function checkStatus(range,status):boolean {
 }
 
 function formatData(type:string,data:object):string{
-    let r = null
+    let r 
     switch(type) {
         case 'application/x-www-form-urlencoded' :{
             r = formatKV(data)
+            break
         } 
+        default: {}
         case 'application/json': {
-            r = JSON.stringify(r)
+            r = JSON.stringify(data)
         }
     }
+
     return r
 }
 
 function formatKV(data:object) {
     let r = ''
     for(let k in data) {
-        r += `k=${data[k]}&`
+        r += `${k}=${data[k]}&`
     }
     return r.substring(0,r.length - 1)
 }

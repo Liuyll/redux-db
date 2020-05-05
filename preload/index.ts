@@ -1,4 +1,4 @@
-import { DbOpts } from './../db/core'
+import { DbOpts } from '../db/core'
 
 import { useDB } from '../db'
 import _ from '../utils'
