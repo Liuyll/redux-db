@@ -210,6 +210,9 @@ setTimeout(() => cancel(),1000)
 
     在这种情况下,`redux-db`会优先请求数据,但在首次失败后,`redux-db`将不会再次请求,而是返回缓存.
 
++ network-only
+
+    在这种情况下,`redux-db`会优先请求数据,但在首次失败后,`api middleware`会直接返回一个`type:fail`的`action`
 ```
 getDataAction() {
     return {
@@ -327,7 +330,7 @@ DB.interceptors.after.use(function(){
 DB.interceptors.after.use(function(){
     this.persist()
     setTimeout(_ => {
-        console.log(this.data) // undefined or dirty data
+        console.log(this.data) // normal
     },0)
     this.release()
 },'async')
