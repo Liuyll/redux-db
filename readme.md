@@ -66,6 +66,38 @@ type someProperty = {
 }
 ```
 
+#### 基础使用
+与`@tencent/db`一致,`redux-db`提供了取数中间件,你可以以一个模块的形式维护数据
+```
+getDataAction() {
+    return {
+        [CALL_API]: {
+            url: 'ke.qq.com/data/some...'
+        }
+    }
+}
+```
+
+#### transformData
+`redux-db`提供了数据转换的功能,你可以通过它修改返回的数据
+
+不过,如果你需要以一定的规范修改返回的数据,或者进行复杂的转换,建议使用`interceptor`
+```
+getDataAction() {
+    return {
+        [CALL_API]: {
+            url: 'ke.qq.com/data/some...',
+            transformData(data) {
+                return {
+                    ...data,
+                    ...extra
+                }
+            }
+        }
+    }
+}
+```
+
 #### interceptor
 作用范围:
 + global interceptor
@@ -101,6 +133,7 @@ type someProperty = {
     
     需要注意的是,`after`拦截器并不是最早接触到返回数据的函数,在它之前至少会经过`checkStatus`这个阶段.如果返回的`status`不是可接受的,那么不会调用`after`拦截器.
 
+你可以在拦截器里访问`Sender`操作类,但这要求你不要使用箭头函数
 ##### global
 对于任何全局拦截器,都必须要提供一个`name`进行注册
 ```
@@ -203,12 +236,35 @@ DB.defaults.baseUrl = ''
 + general:
 
     为兼容`@tencent/db`,`POST`默认的`Content-Type`是`x-www-form-urlencoded`,不过你可以手动指定为`application/json`
+
+    默认情况下,你不需要手动转换`data`,只需要指明`Content-Type`即可
+    ```
+    getDataAction() {
+        return {
+            [CALL_API]: {
+                type:'POST',
+                headers: {
+                    data: {
+                        name:'lyl',
+                        age:20
+                    }
+                }
+            }
+        }
+    }
+    ```
+
+    手动指定为`json`
     ```
     getDataAction() {
         return {
             [CALL_API]: {
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    data: {
+                        name:'lyl,
+                        age:20
+                    }
                 }
             }
         }
@@ -224,12 +280,11 @@ DB.defaults.baseUrl = ''
     getDataAction() {
         return {
             [CALL_API]: {
-                headers: {
-                    data:qs.stringify({
-                        name:'liuyl',
-                        age:'20'
-                    })
-                }
+                type:'POST',
+                data:qs.stringify({
+                    name:'liuyl',
+                    age:'20'
+                })
             }
         }
     }
@@ -237,7 +292,7 @@ DB.defaults.baseUrl = ''
 
 
 #### cdn select
-你可以提供多个cdn,`redux-db`会选择最快的一个返回,并在后面的请求中切换到该cdn
+你可以提供多个cdn,`redux-db`会选择最快的一个返回,并在后面的请求中自动切换到该cdn(这个过程用户不会感知)
 
 使用该功能,你需要在`action`里:
 + 注册该cdn组的`name`
@@ -255,3 +310,28 @@ getDataAction() {
 }
 ```
 需要注意的是,`redux-db`只会在`session`生命周期内保存最快cdn.
+
+### 可能会遇到的问题
+
+上面已经提到过,`redux-db`自动池化了某些关键类,这导致了一些`response`拦截器里无法异步访问数据
+```
+DB.interceptors.after.use(function(){
+    setTimeout(_ => {
+        console.log(this.data) // undefined or dirty data
+    },0)
+},'async')
+```
+这是因为`Sender`类在同步执行完所有`response`拦截器后就会自动回收入池,如果需要的话,你需要主动调用`persist`方法阻止这种行为.
+
+```
+DB.interceptors.after.use(function(){
+    this.persist()
+    setTimeout(_ => {
+        console.log(this.data) // undefined or dirty data
+    },0)
+    this.release()
+},'async')
+```
+但请注意的是,在使用完后,需要手动调用`release`把它释放,否则它将不能得到复用.
+
+至于释放的时机,你可以合理的分配自己的拦截器.但为了规避一些不必要的错误,尽量不要使用在拦截器里异步访问数据.
