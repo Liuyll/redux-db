@@ -3,7 +3,6 @@ import { AjaxArgsType,RequestType } from './interface'
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
-
         const {
             'with-credentials': withCredentials,
             headers = {},
@@ -14,8 +13,8 @@ export function ajax(options:AjaxArgsType) {
             cancelToken
         } = options
 
-        const ContentType = headers['Content-Type'] || (headers['Content-Type'] = 'application/x-www-form-urlencoded')
-        
+        const ContentType = headers['Content-Type'] || (headers['Content-Type'] = data instanceof FormData ? 'multipart/form-data' : 'application/x-www-form-urlencoded')
+
         if(cancelToken) {
             cancelToken(() => {
                 reject('__FETCH_CANCEL')
@@ -31,7 +30,7 @@ export function ajax(options:AjaxArgsType) {
             }
             if(Object.keys(data).length && Object.keys(query).length) url = handleQuery(url,query)
         } else {
-            data = formatData(ContentType,data) as any
+            data = formatData(ContentType,data)
         } 
 
         if(typeof fetch === 'undefined') {
@@ -48,7 +47,10 @@ export function ajax(options:AjaxArgsType) {
 
             if(timeout) xhr.timeout = timeout
             xhr.withCredentials = withCredentials
-            xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
+
+            // 不为multipart/form-data设置c-t
+            ContentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
+            
             xhr.send(type === 'GET' ? '' : data as any as string) 
 
             xhr.ontimeout = function(e) {
@@ -82,12 +84,14 @@ export function ajax(options:AjaxArgsType) {
             const opts = {
                 headers,
                 method: type,
-                ... type !== 'GET' ? { body: JSON.stringify(data) } : {},
+                ... type !== 'GET' ? { body: data instanceof FormData ? data : JSON.stringify(data) } : {},
                 cache,
                 credentials: handleCredentials(withCredentials)
             }
 
-            console.log(headers)
+            if(ContentType === 'multipart/form-data') delete headers['Content-Type']
+            console.log(opts)
+
             if(timeout) {
                 if(typeof AbortController !== 'undefined') {
                     const controller = new AbortController()
@@ -165,9 +169,22 @@ function checkStatus(range,status):boolean {
     return range === status ? true : false
 }
 
-function formatData(type:string,data:object):string{
+function formatData(type:string,data:object):any{
     let r 
     switch(type) {
+        case 'multipart/form-data': {
+            if(data instanceof FormData) {
+                r = data
+                break
+            }
+
+            r = new FormData()
+            Object.keys(data).forEach(key => {
+                r.append(key,data[key])
+            })
+            
+            break
+        }
         case 'application/x-www-form-urlencoded' :{
             r = formatKV(data)
             break

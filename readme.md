@@ -276,18 +276,17 @@ DB.defaults.baseUrl = ''
 
 + form-data:
 
-    如果需要上传`form-data`形式的数据,不要手动设置`Content-Type:multipart/form-data`,你只需要将`data`数据格式化为`form-data`参数形式即可.
-    最好的方案是采用`qs`!
+    如果需要上传`form-data`形式的数据,你依然需要设置`multipart:form-data`.不过不要担心,`redux-db`并不会上传这个`header`,它只是作为内部的一个标识而已.
+
+    甚至,你可以直接以一个构建好的`FormData`作为`data`,这样就不需要指定`header`了.
     ```
-    import qs from 'qs'
     getDataAction() {
         return {
             [CALL_API]: {
                 type:'POST',
-                data:qs.stringify({
-                    name:'liuyl',
-                    age:'20'
-                })
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
             }
         }
     }
