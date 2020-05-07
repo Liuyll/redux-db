@@ -1,6 +1,23 @@
 ## redux-db
 全方位拥抱`Typescript`,完全重构了@tencent/db库,并提供了重量级别的新功能.
 
+### 从@tencent/db迁移
++ redux/db 默认不发送cookie,你需要主动设置`with-credentials`
+
+    如果从`@tencent/db`迁移,应该初始化DB
+    ```
+    DB.defaults['with-credentials'] = true
+    ```
+
++ api middleware
+`redux-db`已经提供了兼容`api middleware action`的中间件.
+
+    不过在`redux-db`里,`call api`必须引用自`redux-db/middleware/api`,因为它是一个`Symbol`,而非一个字符串.
+
++ extension
+
+    `redux-db`本身没有实现任何扩展.`@tencent/db`原有的扩展应该使用`redux-db`提供的插件机制进行添加.
+
 ### 功能:
 #### 拦截器:
 + 可拔插的全局拦截器及单次请求拦截器

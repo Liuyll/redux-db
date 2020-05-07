@@ -3,6 +3,7 @@ import { AjaxArgsType,RequestType } from './interface'
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
+        let sendData:string
         const {
             'with-credentials': withCredentials,
             headers = {},
@@ -30,7 +31,7 @@ export function ajax(options:AjaxArgsType) {
             }
             if(Object.keys(data).length && Object.keys(query).length) url = handleQuery(url,query)
         } else {
-            data = formatData(ContentType,data)
+            sendData = formatData(ContentType,data)
         } 
 
         if(typeof fetch === 'undefined') {
@@ -51,7 +52,7 @@ export function ajax(options:AjaxArgsType) {
             // 不为multipart/form-data设置c-t
             ContentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
             
-            xhr.send(type === 'GET' ? '' : data as any as string) 
+            xhr.send(type === 'GET' ? '' : sendData) 
 
             xhr.ontimeout = function(e) {
                 reject(e)
@@ -81,16 +82,15 @@ export function ajax(options:AjaxArgsType) {
                 }
             }
         } else {
-            const opts = {
+            const opts:RequestInit = {
                 headers,
                 method: type,
-                ... type !== 'GET' ? { body: data instanceof FormData ? data : JSON.stringify(data) } : {},
+                ... type !== 'GET' ? { body: sendData } : {},
                 cache,
                 credentials: handleCredentials(withCredentials)
             }
 
             if(ContentType === 'multipart/form-data') delete headers['Content-Type']
-            console.log(opts)
 
             if(timeout) {
                 if(typeof AbortController !== 'undefined') {
@@ -169,7 +169,7 @@ function checkStatus(range,status):boolean {
     return range === status ? true : false
 }
 
-function formatData(type:string,data:object):any{
+function formatData(type:string,data:object):string{
     let r 
     switch(type) {
         case 'multipart/form-data': {
