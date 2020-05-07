@@ -26,6 +26,8 @@ function initDbExts() {
     }
 }
 
+export { DB }
+
 function initWork() {
     initDbExts()
 }

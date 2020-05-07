@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+    "module": "commonjs",
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "target": "ES6",
+    "jsx":"react",
+    "allowSyntheticDefaultImports": true,
+    },
+    "include": [
+        "db/**/*",
+        "preload/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
