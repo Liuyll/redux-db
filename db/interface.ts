@@ -12,14 +12,12 @@ interface IUpdateCache {
 export type AjaxArgsType = {
     url:string,
     successStatusRange ?:[] | number,
-    complete ?: () => void,
-    fail ?: () => void,
     data ?:object,
     type ?:RequestType,
     query ?: object,
     // DB.race | DB.all
-    'Content-Type' ?: string,
-    'with-credentials' ?: boolean,
+    // 'Content-Type' ?: string,
+    withCredentials ?: boolean,
     headers ?:HeadersType,
     cache ?: CacheType,
     timeout ?: number,

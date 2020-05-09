@@ -4,6 +4,7 @@
     "experimentalDecorators": true,
     "esModuleInterop": true,
     "target": "ES6",
+    "lib": ["es6","ES2016.Array.Include","dom"],
     "jsx":"react",
     "allowSyntheticDefaultImports": true,
     },

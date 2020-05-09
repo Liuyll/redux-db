@@ -2,6 +2,7 @@ import { CustomMustType,CustomOptionalType } from './interface'
 import { ajax } from './fetch'
 import _ from '../utils'
 
+export const CONVERT_TO_FALSE = 'CONVERT_TO_FALSE'
 interface IDB extends IPool<DB>{
     execute:(args:unknown[]) => void
 }
@@ -30,6 +31,11 @@ interface IPool<T> {
 
 type Before = (config:SenderOpts) => SenderOpts
 type After = (data:unknown) => any
+
+/**
+ * succ和err接口将不被redux-db支持
+ * DB类将作为抽象层兼容@tencent/db
+ */
 export type DbOpts = {
     // 标识race
     name ?: string,
@@ -43,15 +49,13 @@ export type DbOpts = {
     after?:After[]
 } & CustomOptionalType
 
-
 export type SenderOpts = {
     before ?: Before[]
     after ?: After[]
 } & DbConfigs
 
-type DbConfigs = Omit<DbOpts,'succ' | 'err'> & {
-    succ:Function[]
-    err:Function[]
+type DbConfigs = Omit<DbOpts,'err'> & {
+    err: Function[]
 }
 
 const DBPools:DB[] = []
@@ -60,17 +64,17 @@ const SenderPools:Sender[] = []
 const DB_CONTAIN_COUNT = 10
 const SENDER_CONTAIN_COUNT = 10
 
-// static desc
-interface IDBS {
-    extendConfig(exts:object)
-    options: object
-} 
+interface DBDefaultsConfig {
+    baseUrl ?: string,
+    withCredentials ?: boolean,
+    withBrowserCache ?: boolean,
+}
 
 function extendConfigs<T>(configs:T,...exts:object[]):T {
     for(let ext of exts) {
         for (let _ext in ext) {
             let _v = ext[_ext]
-            if(!~['err','succ','before','after'].indexOf(_ext)) configs[_ext] = _v
+            if(!~['before','after','err'].indexOf(_ext)) configs[_ext] = _v
             else {
                 _v = _v.pop ? _v : [_v]
                 configs[_ext] && configs[_ext].pop ? (configs[_ext] = [].concat.call(configs[_ext],_v)) : (configs[_ext] = _v) 
@@ -78,6 +82,7 @@ function extendConfigs<T>(configs:T,...exts:object[]):T {
         }
     }
 
+    // TODO: 字符串解析有两次判断,改用正则匹配
     if(configs['baseUrl'] !== '' && configs['url']) {
         let url = configs['url']
 
@@ -97,7 +102,7 @@ function extendConfigs<T>(configs:T,...exts:object[]):T {
 }
 
 export class DB implements IDB{
-    static defaults = {
+    static defaults:DBDefaultsConfig = {
         baseUrl: ''
     }
 
@@ -160,16 +165,18 @@ export class DB implements IDB{
      * @static
      * @param {DbOpts} 传入参数
      * 将参数转化适配至DbConfigs
-     * 主要是succ和err将由middleware的单个变成数组形式,以供内部扩展调用
-     * 增加before,供插件机制调用
+     * 扩展优先级:
+     * 1. custom options
+     * 2. extension options
+     * 3. global defaults
      */
     static configTransform(configs:DbOpts):DbConfigs {
         return extendConfigs<DbConfigs>({
-            succ: [],
-            err: [],
             before: [],
+            after: [],
+            err: [],
             type: configs.type ? configs.type : 'GET'
-        } as any as DbConfigs,this.defaults,configs,DB.options)
+        } as any as DbConfigs,this.defaults,this.options,configs)
     }
 
     static all(...requests:DbOpts[]) {
@@ -178,8 +185,8 @@ export class DB implements IDB{
         const noop = () => {}
 
         requests.forEach(r => {
-            succ.push(r.succ)
-            err.push(r.err)
+            succ.push([r.succ])
+            err.push([r.err])
 
             r.succ = noop
             r.err = noop
@@ -200,8 +207,9 @@ export class DB implements IDB{
         const noop = () => {}
 
         requests.forEach((r,i) => {
-            succ.push(r.succ)
-            err.push(r.err)
+            // TODO: 执行回调的错误捕获,不能让一个回调错误影响到后面的执行
+            succ.push([r.succ])
+            err.push([r.err])
 
             // if cdnselect -> cache url
             succ.forEach(s => s.unshift((__:any,url:string) => {
@@ -221,6 +229,7 @@ export class DB implements IDB{
             const { __race_key_ } = ret
             const index = raceMap.get(__race_key_)
 
+            if(!index) return console.warn('after拦截器删除了内部RACE标识,请不要操作返回数据之外的键')
             type === 'succ' ? succ[index].forEach(cb => cb(ret,requests[index].url)) : err[index].forEach(cb => cb(ret))
         }
 
@@ -235,19 +244,50 @@ export class DB implements IDB{
         extendConfigs(this.options,exts)
     }
 
-    static addExtension(stage:'before' | 'succ' | 'err' | 'after',name:string,handle:Function) {
+    /**
+     * 
+     * @param stage 执行阶段
+     * @param name 注册拦截器名
+     * @param handle 拦截器执行方法
+     * @param fail err拦截器
+     */
+    static addExtension(stage:'before' | 'after',name:string,handle:Function,fail?:Function) {
         let conf = {},
             enableKey = handle['enableKey'] || name + 'Enable'
 
         _.extend(conf, handle['option'] || {})
-        conf[stage] = (...args:any[]) => {
-            if (this.options[enableKey]) {
-                if(args[0].bannerPlugins && args[0].bannerPlugins.includes(name)) return args[0]
-                return handle.apply(this, args)
+
+        if(stage === 'before') {
+            conf[stage] = function (this:Sender,...args:any[]) {
+                if (DB.options[enableKey]) {
+                    if(args[0].bannerPlugins && args[0].bannerPlugins!.includes(name)) return args[0]
+                    return handle.apply(this, args)
+                }
+            }
+        }
+
+        if(stage === 'after') {
+            conf[stage] = function (this:Sender,data:any){
+                let config = this.config
+
+                if (DB.options[enableKey]) {
+                    if(config.bannerPlugins && config.bannerPlugins!.includes(name)) return data
+                    return handle.call(this, data)
+                }
+            }
+        }
+       
+        if(stage === 'after' && fail) {
+            conf['err'] = function (this:Sender,err) {
+                let config = this.config
+                if (DB.options[enableKey]) {
+                    if(config.bannerPlugins && config.bannerPlugins!.includes(name)) return 
+                    return fail.call(this, err)
+                }
             }
         }
         
-        DB.extendConfigs(conf)
+        this.extendConfigs(conf)
     }
 
     static closePlugin(name:string,enableKey = 'Enable') {
@@ -262,6 +302,7 @@ export class DB implements IDB{
 }
 
 class Sender implements ISender {
+    
     autoRelease = false
     config:SenderOpts = null
     data = null
@@ -291,43 +332,52 @@ class Sender implements ISender {
             this.succeed()
             // 注意放入池子的时机,如果需要可以调用persist保持
             this.autoRelease && this.release()
+
             return this.data
-        }).catch(__ => {
-            this.error(this.err)
-            throw this.err
+        }).catch(err => {
+            this.error(err)
+            return err
         })
     }
 
     before(config:SenderOpts):SenderOpts {
-        return config.before ? config.before.reduce((_config,cb) => { return cb(_config) },config) : config
+        return config.before ? config.before.reduce((_config,cb) => { 
+            try {
+                return cb(_config) 
+            } catch(e) {
+                console.error(`
+                    before拦截器发生错误,error:${e}
+                `)
+                throw e
+            }
+            
+        },config) : config
     }
 
     // transform data before processSucc callback
     after(data:unknown) {
-        this.data = this.config.after ? this.config.after.reduce((_data,cb) => cb.call(this,_data),data) : data
+        this.data = this.config.after.length ? this.config.after.reduce((_data,cb) => {
+            if(_.isArray(_data) && _data[0] === CONVERT_TO_FALSE) throw new Error(JSON.stringify({
+                type: CONVERT_TO_FALSE,
+                reason: _data[1]
+            }))
+
+            return cb.call(this,_data)
+        },data) : data
     }
 
     succeed() {
-        const convertType = 'CONVERT_TO_FALSE'
-        try {
-            let ret = null
-            
+        try {            
             let data = {
                 ...this.data
             }
             delete data.__race_key_
 
-            this.config.succ.forEach(cb => {
-                ret = cb(data)
-                if(ret.pop && ret[0] === false) throw new Error(JSON.stringify({
-                    type: convertType,
-                    msg: ret[1]
-                }))
-            }) 
+            this.config.succ(data) 
         } catch({ message }) {
             try {
-                let ret = JSON.parse(message)
-                if(ret.type === convertType) this.config.err.forEach(cb => cb(ret.msg))
+                let ret = _.safeJsonParse(message)
+                if(ret['type'] === CONVERT_TO_FALSE) this.error(ret)
             } catch(e) {
                 new Error(e.message)
             }
@@ -335,10 +385,19 @@ class Sender implements ISender {
     }
 
     error(err){
-        this.config.err && this.config.err.pop && this.config.err.forEach(cb => cb(err))
+        this.config.err && this.config.err.forEach(cb => {
+            cb.call(this,err)
+        })
     }
 
-    fetch(opts:CustomMustType):Promise<unknown> {
+    /**
+     * 职责:
+     * 1. 调用内部ajax库
+     * 2. 执行用户提供的transformData,这是用户最先接触到返回数据的地方
+     * 3. 根据策略缓存数据
+     * 4. 注入race所需要的key
+     */
+    fetch(opts:CustomMustType):Promise<void> {
         const extendOpt = {
             complete() {}
         }
@@ -354,11 +413,20 @@ class Sender implements ISender {
         }
        
         return ajax({ ...opts,...extendOpt }).then(r => {
-            let data = _.safeJsonParse(r as any)
+            let { transformData } = this.config
+            let data:string | object = _.safeJsonParse(r as any)
+
+            // 对本身就是string类型的返回值不进入任何处理
+            if(data['__transform'] === 'fail') data = data['__raw'] 
+
+            if(transformData && typeof transformData === 'function') {
+                r = transformData(r)
+            } else new Error('transformData isn\'t a function')
+
             // 在注入race key之前缓存
             let key 
             if((key = this.config.updateCache && this.config.updateCache.key)) {
-                window.localStorage.setItem(key,_.safeJsonStringify(data))
+                window.localStorage.setItem(key, typeof data === 'object' ? _.safeJsonStringify(data) : data)
             }
 
             injectRaceKey(data)
@@ -373,6 +441,7 @@ class Sender implements ISender {
             }
             
             else err = _err
+
             injectRaceKey(err)
             this.err = err
         })
@@ -415,3 +484,21 @@ export function getDB(opts:DbOpts):DB {
     }
 }
 
+export namespace DB {
+    interface IAfterUse {
+        (handler,name,err ?: Function):any
+    }
+    interface IBeforeUse {
+        (handler,name):any
+    }
+
+    interface IStageInterceptor<T> {
+        use:T
+    }
+    interface IInterceptors {
+        after:IStageInterceptor<IAfterUse>
+        before:IStageInterceptor<IBeforeUse>
+    }
+
+    export var interceptors:IInterceptors
+}

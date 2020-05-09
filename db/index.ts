@@ -1,5 +1,5 @@
 import { getDB,DbOpts,DB } from './core'
-import dbExts from './extension'
+import dbExts from './plugins'
 
 export function useDB(autoFetch:boolean,opts:DbOpts):Promise<unknown>;
 export function useDB(opts:DbOpts):DB;

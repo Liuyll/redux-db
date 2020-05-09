@@ -18,6 +18,10 @@
 
     `redux-db`本身没有实现任何扩展.`@tencent/db`原有的扩展应该使用`redux-db`提供的插件机制进行添加.
 
++ err/succ回调
+
+    `redux-db`本身已经实现了`before`和`after`回调,保留的`err`和`succ`仅为了支持老式的中间件,如果错误处理需求,应该配置全局`after`拦截器,并在其中进行错误判断.
+
 ### 功能:
 #### 拦截器:
 + 可拔插的全局拦截器及单次请求拦截器
@@ -191,7 +195,7 @@ getDataAction() {
 + succ
 + err
 
-不过这两个拦截器没有被暴露出来,只有通过内置的api进行扩展
+⚠️:这两个拦截器仅用来支持老式的中间件,请不要主动使用他们.
 ```
 DB.addExtensions('succ',name,handler)
 ```

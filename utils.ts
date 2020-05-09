@@ -22,8 +22,8 @@ function safeJsonParse(target:string):object{
         ret = JSON.parse(target)
     } catch(e) {
         ret = {
-            transform: 'fail',
-            raw: target
+            __transform: 'fail',
+            __raw: target
         }
     }
     return ret

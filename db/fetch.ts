@@ -1,16 +1,16 @@
 import { AjaxArgsType,RequestType } from './interface'
 
+const JSONP_SUPPORT_RETURN = '__REDUX_DB_JSONP_SUPPORT'
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
         let sendData:string
         const {
-            'with-credentials': withCredentials,
+            withCredentials,
             headers = {},
             cache = 'default',
             timeout,
             successStatusRange,
-            transformData,
             cancelToken
         } = options
 
@@ -54,31 +54,29 @@ export function ajax(options:AjaxArgsType) {
             
             xhr.send(type === 'GET' ? '' : sendData) 
 
-            xhr.ontimeout = function(e) {
-                reject(e)
-            }
-
+            xhr.ontimeout = reject
+            
             xhr.onreadystatechange = function() {
                 let requestPerfStart
                 switch (xhr.readyState) {
-                    case XMLHttpRequest.OPENED: {
-                        requestPerfStart = performance.now()
-                        break
-                    }
-                    case XMLHttpRequest.DONE: {
-                        let consume = performance.now() - requestPerfStart
+                case XMLHttpRequest.OPENED: {
+                    requestPerfStart = performance.now()
+                    break
+                }
+                case XMLHttpRequest.DONE: {
+                    let consume = performance.now() - requestPerfStart
 
-                        checkStatus(successStatusRange,xhr.status) ? resolve({
-                            ... options.perf ? { __consumeTime: consume } : {},
-                            status: xhr.status,
-                            data: xhr.response
-                        }) : reject({
-                            ... options.perf ? { __consumeTime: consume } : {},
-                            status: xhr.status,
-                            errMsg: xhr.response
-                        })
-                        break
-                    }
+                    checkStatus(successStatusRange,xhr.status) ? resolve({
+                        ... options.perf ? { __consumeTime: consume } : {},
+                        status: xhr.status,
+                        data: xhr.response
+                    }) : reject({
+                        ... options.perf ? { __consumeTime: consume } : {},
+                        status: xhr.status,
+                        errMsg: xhr.response
+                    })
+                    break
+                }
                 }
             }
         } else {
@@ -101,35 +99,30 @@ export function ajax(options:AjaxArgsType) {
 
                     setTimeout(() => {
                         controller.abort()
-                        reject(new Error('fetch timeout'))
+                        reject('fetch timeout')
                     },timeout)
                 } 
                 else {
                     Promise.race([
                         fetchAndHandle(),
                         new Promise(_ => {
-                            setTimeout(() => reject(new Error('timeout')),timeout)
+                            setTimeout(() => reject('fetch timeout'),timeout)
                         })
                     ])
                 }
             } else fetchAndHandle()
 
             function fetchAndHandle():Promise<unknown> {
-                return fetch(url,opts).then(r => handleResult(r)).then(r => {
-                    if(transformData && typeof transformData === 'function') {
-                        r = transformData(r)
-                    } else new Error('transformData isn\'t a function')
-
-                    resolve(r)
-                }).catch(e => {
-                    reject(e)
-                })
+                return fetch(url,opts).then(r => handleResult(r))
+                    .then(resolve)
+                    .catch(reject)
             }
 
             function handleResult(res:Response) {
                 const handleContentTypeMap = {
                     'application/json': () => res.json(),
-                    'application/javascript': () => true,
+                    // 用以支持jsonp,不做任何处理
+                    'application/javascript': () => JSONP_SUPPORT_RETURN,
                     'application/html': () => res.text(),
                     'application/text': () => res.text(),
                 }
@@ -172,27 +165,27 @@ function checkStatus(range,status):boolean {
 function formatData(type:string,data:object):string{
     let r 
     switch(type) {
-        case 'multipart/form-data': {
-            if(data instanceof FormData) {
-                r = data
-                break
-            }
+    case 'multipart/form-data': {
+        if(data instanceof FormData) {
+            r = data
+            break
+        }
 
-            r = new FormData()
-            Object.keys(data).forEach(key => {
-                r.append(key,data[key])
-            })
+        r = new FormData()
+        Object.keys(data).forEach(key => {
+            r.append(key,data[key])
+        })
             
-            break
-        }
-        case 'application/x-www-form-urlencoded' :{
-            r = formatKV(data)
-            break
-        } 
-        default: {}
-        case 'application/json': {
-            r = JSON.stringify(data)
-        }
+        break
+    }
+    case 'application/x-www-form-urlencoded' :{
+        r = formatKV(data)
+        break
+    } 
+    default: {}
+    case 'application/json': {
+        r = JSON.stringify(data)
+    }
     }
 
     return r
