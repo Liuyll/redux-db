@@ -1,4 +1,4 @@
-export type RequestType = 'GET' | 'POST' | 'PUT' | 'get' | 'post' | 'put'
+export type RequestType = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'get' | 'post' | 'put' | 'delete' 
 type CacheType = RequestCache
 
 interface HeadersType {
@@ -28,6 +28,8 @@ export type AjaxArgsType = {
     updateCache ?: IUpdateCache,
     // 本次请求关闭插件
     bannerPlugins ?: string[],
+    // X-HTTP-Method-Override
+    isXHMO ?: boolean
 }
 
 export type CustomMustType = Pick<AjaxArgsType,'url'>

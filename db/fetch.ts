@@ -1,3 +1,4 @@
+const performance = window.performance
 import { AjaxArgsType,RequestType } from './interface'
 
 const JSONP_SUPPORT_RETURN = '__REDUX_DB_JSONP_SUPPORT'
@@ -10,11 +11,17 @@ export function ajax(options:AjaxArgsType) {
             headers = {},
             cache = 'default',
             timeout,
-            successStatusRange,
-            cancelToken
+            successStatusRange = [200,300],
+            cancelToken,
+            // add X-HTTP-Method-Override
+            isXHMO
         } = options
 
-        const ContentType = headers['Content-Type'] || (headers['Content-Type'] = data instanceof FormData ? 'multipart/form-data' : 'application/x-www-form-urlencoded')
+        const ContentType = headers['Content-Type'] || (
+            headers['Content-Type'] = data instanceof FormData 
+                ? 'multipart/form-data' 
+                : 'application/x-www-form-urlencoded'
+        )
 
         if(cancelToken) {
             cancelToken(() => {
@@ -34,28 +41,35 @@ export function ajax(options:AjaxArgsType) {
             sendData = formatData(ContentType,data)
         } 
 
+        if(isXHMO) {
+            headers['X-HTTP-Method-Override'] = type
+        }
+
         if(typeof fetch === 'undefined') {
             let xhr = new XMLHttpRequest()
-            if(type === 'GET') {
-                xhr.open('get',url)
-            } else if(type === 'POST') {
-                xhr.open('post',url)
-            }
-            
+
+            xhr.open(type,url,true)
+
             for(let header in headers) {
                 xhr.setRequestHeader(header,headers[header])
             }
+
 
             if(timeout) xhr.timeout = timeout
             xhr.withCredentials = withCredentials
 
             // 不为multipart/form-data设置c-t
             ContentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
-            
+
             xhr.send(type === 'GET' ? '' : sendData) 
 
-            xhr.ontimeout = reject
-            
+            xhr.ontimeout = () => {
+                reject({
+                    status: null,
+                    errMsg: 'timeout'
+                })
+            }
+
             xhr.onreadystatechange = function() {
                 let requestPerfStart
                 switch (xhr.readyState) {

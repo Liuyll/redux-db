@@ -4,7 +4,7 @@ import _ from '../utils'
 
 export const CONVERT_TO_FALSE = 'CONVERT_TO_FALSE'
 interface IDB extends IPool<DB>{
-    execute:(args:unknown[]) => void
+    execute:(args:unknown[]) => any
 }
 
 interface ISenderHooks {
@@ -43,11 +43,12 @@ export type DbOpts = {
     urls ?: string[],
     isCdnSelect ?: boolean,
     // TODO: 支持在action里直接调用DB.race
-    succ:Function,
-    err:Function,
-    before?:Before[],
-    after?:After[]
+    succ ?: Function,
+    err ?: Function,
+    before ?: Before[],
+    after ?: After[]
 } & CustomOptionalType
+
 
 export type SenderOpts = {
     before ?: Before[]
@@ -229,6 +230,7 @@ export class DB implements IDB{
             const { __race_key_ } = ret
             const index = raceMap.get(__race_key_)
 
+            // eslint-disable-next-line
             if(!index) return console.warn('after拦截器删除了内部RACE标识,请不要操作返回数据之外的键')
             type === 'succ' ? succ[index].forEach(cb => cb(ret,requests[index].url)) : err[index].forEach(cb => cb(ret))
         }
@@ -325,7 +327,7 @@ class Sender implements ISender {
     send() {
         this.config = this.before(this.config)
         return this.fetch(<CustomMustType>this.config).then(_ => {
-            if(this.err) throw new Error()
+            if(this.err) throw this.err
 
             // 拦截器调用的时机在回调之前,否则无法修改数据
             this.after(this.data)
@@ -336,7 +338,7 @@ class Sender implements ISender {
             return this.data
         }).catch(err => {
             this.error(err)
-            return err
+            throw err
         })
     }
 
@@ -372,6 +374,8 @@ class Sender implements ISender {
                 ...this.data
             }
             delete data.__race_key_
+
+            this.data = data
 
             this.config.succ(data) 
         } catch({ message }) {
@@ -500,5 +504,5 @@ export namespace DB {
         before:IStageInterceptor<IBeforeUse>
     }
 
-    export var interceptors:IInterceptors
+    export let interceptors:IInterceptors
 }

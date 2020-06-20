@@ -1,10 +1,10 @@
 import { getDB,DbOpts,DB } from './core'
 import dbExts from './plugins'
 
-export function useDB(autoFetch:boolean,opts:DbOpts):Promise<unknown>;
+export function useDB(autoFetch:boolean,opts:DbOpts):Promise<any>;
 export function useDB(opts:DbOpts):DB;
 
-export function useDB(...options):Promise<unknown> | DB {
+export function useDB(...options):Promise<any> | DB {
     let db
     const autoFetch = options[0]
     if(typeof autoFetch === 'boolean') {
