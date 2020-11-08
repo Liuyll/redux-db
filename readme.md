@@ -1,6 +1,17 @@
 ## redux-db
 全方位拥抱`Typescript`,完全重构了@tencent/db库,并提供了重量级别的新功能.
 
+### install
+npm
+```
+npm install -S rexfetch
+```
+
+yarn
+```
+yarn add rexfetch
+```
+
 ### 从@tencent/db迁移
 + redux/db 默认不发送cookie,你需要主动设置`with-credentials`
 

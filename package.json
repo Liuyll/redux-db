@@ -1,14 +1,18 @@
 {
-  "name": "redux-db",
+  "name": "rexfetch",
   "version": "1.0.0",
   "description": "an ajax library",
-  "main": "./db/index.ts",
+  "main": "lib/rexdb.js",
+  "browser": {
+    "./lib/rexdb.js": "./lib/rexdb.esm.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://git.code.oa.com/youngboyliu/redux-db"
   },
   "scripts": {
-    "test": "mocha -r jsdom-global/register --require ts-node/register $(find '__test__' -name '*.spec.ts')"
+    "test": "mocha -r jsdom-global/register --require ts-node/register $(find '__test__' -name '*.spec.ts')",
+    "build": "rollup -c"
   },
   "author": "youngboyliu",
   "license": "ISC",
@@ -20,6 +24,8 @@
     "chai": "^4.2.0",
     "eslint": "^6.8.0",
     "mocha": "^7.1.2",
+    "rollup": "^2.33.1",
+    "rollup-plugin-typescript": "^1.0.1",
     "sinon": "^9.0.2",
     "ts-node": "^8.10.1",
     "typescript": "^3.8.3"
