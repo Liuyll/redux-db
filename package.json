@@ -1,5 +1,5 @@
 {
-  "name": "rexfetch",
+  "name": "rexos",
   "version": "1.0.0",
   "description": "an ajax library",
   "main": "lib/rexdb.js",
@@ -14,7 +14,7 @@
     "test": "mocha -r jsdom-global/register --require ts-node/register $(find '__test__' -name '*.spec.ts')",
     "build": "rollup -c"
   },
-  "author": "youngboyliu",
+  "author": "liuyll",
   "license": "ISC",
   "devDependencies": {
     "@types/chai": "^4.2.11",

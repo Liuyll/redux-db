@@ -1,18 +1,14 @@
-## redux-db
+## rexos
 全方位拥抱`Typescript`,完全重构了@tencent/db库,并提供了重量级别的新功能.
 
 ### install
 npm
 ```
-npm install -S rexfetch
+npm install -S rexos
 ```
 
-yarn
-```
-yarn add rexfetch
-```
-
-### 从@tencent/db迁移
+## 从其他框架迁移
+#### @tencent/db
 + redux/db 默认不发送cookie,你需要主动设置`with-credentials`
 
     如果从`@tencent/db`迁移,应该初始化DB
@@ -21,18 +17,20 @@ yarn add rexfetch
     ```
 
 + api middleware
-`redux-db`已经提供了兼容`api middleware action`的中间件.
+`rexos`已经提供了兼容`api middleware action`的中间件.
 
-    不过在`redux-db`里,`call api`必须引用自`redux-db/middleware/api`,因为它是一个`Symbol`,而非一个字符串.
+    不过在`rexos`里,`call api`必须引用自`rexos/middleware/api`,因为它是一个`Symbol`,而非一个字符串.
 
 + extension
 
-    `redux-db`本身没有实现任何扩展.`@tencent/db`原有的扩展应该使用`redux-db`提供的插件机制进行添加.
+    `rexos`本身没有实现任何扩展.`@tencent/db`原有的扩展应该使用`rexos`提供的插件机制进行添加.
 
 + err/succ回调
 
-    `redux-db`本身已经实现了`before`和`after`回调,保留的`err`和`succ`仅为了支持老式的中间件,如果错误处理需求,应该配置全局`after`拦截器,并在其中进行错误判断.
+    `rexos`本身已经实现了`before`和`after`回调,保留的`err`和`succ`仅为了支持老式的中间件,如果错误处理需求,应该配置全局`after`拦截器,并在其中进行错误判断.
 
+#### axios
+`rexos`的接口几乎与`axios`一致，参照文档开发即可。
 ### 功能:
 #### 拦截器:
 + 可拔插的全局拦截器及单次请求拦截器
@@ -41,33 +39,33 @@ yarn add rexfetch
 + 支持链式修改`config`,链式返回`data`
 
 #### 性能:
-`redux-db`池化了需要重复创建的请求实例类`DB`和请求发送类`Sender`,并且在钩子里面精确掌控了释放的时机,对用户完全透明.
+`rexos`池化了需要重复创建的请求实例类`DB`和请求发送类`Sender`,并且在钩子里面精确掌控了释放的时机,对用户完全透明.
 
 当然,减少`gc`的副作用是丢失了对异步钩子的支持.不过,如果必要的话,你可以调用`persist`来阻止自动入池,并且手动`release`达到可控复用.
 
 #### 强大的功能:
 + cancelToken:
 
-    它不基于[Cancelable Promises](https://github.com/tc39/proposal-cancelable-promises)提案,所以你可以随意的使用它而不考虑兼容性.具体的使用方案你可以查看`axios`,`redux-db`完全兼容`axios cancelToken`接口.
+    它不基于[Cancelable Promises](https://github.com/tc39/proposal-cancelable-promises)提案,所以你可以随意的使用它而不考虑兼容性.具体的使用方案你可以查看`axios`,`rexos`完全兼容`axios cancelToken`接口.
 
 + fetch:
     
-    是的,`redux-db`现在默认采用`fetch api`来获取数据.当然,在`fetch`不被支持的环境下,它还是会回退到`ajax`.
+    是的,`rexos`现在默认采用`fetch api`来获取数据.当然,在`fetch`不被支持的环境下,它还是会回退到`ajax`.
 
 + 缓存:
     
-    `redux-db`提供了强大的缓存能力,它的策略来自于`PWA workbox`:
+    `rexos`提供了强大的缓存能力,它的策略来自于`PWA workbox`:
     + cache-first
     + cache-only
     + network-first
     + network-only
     + stale-while-revalidated
     
-    不过,这些能力需要配套的中间件提供支持(已经附赠),`redux-db`本身并不提供.
+    不过,这些能力需要配套的中间件提供支持(已经附赠),`rexos`本身并不提供.
 
 + preload
     
-    有了`redux-db`,顺带实现`preload`是非常简单的事情.值得一提的是,`preload`会优先利用`link`原生缓存图片类数据.
+    有了`rexos`,顺带实现`preload`是非常简单的事情.值得一提的是,`preload`会优先利用`link`原生缓存图片类数据.
 
 ### API
 它基本兼容`@tencent/db`的使用
@@ -99,7 +97,7 @@ type someProperty = {
 ```
 
 #### 基础使用
-与`@tencent/db`一致,`redux-db`提供了取数中间件,你可以以一个模块的形式维护数据
+与`@tencent/db`一致,`rexos`提供了取数中间件,你可以以一个模块的形式维护数据
 ```
 getDataAction() {
     return {
@@ -111,7 +109,7 @@ getDataAction() {
 ```
 
 #### transformData
-`redux-db`提供了数据转换的功能,你可以通过它修改返回的数据
+`rexos`提供了数据转换的功能,你可以通过它修改返回的数据
 
 不过,如果你需要以一定的规范修改返回的数据,或者进行复杂的转换,建议使用`interceptor`
 ```
@@ -189,7 +187,7 @@ getDataAction() {
 
 问题是,我们可能只需要清除某一个拦截器,比如某次不用上报的请求,我们在发送前需要清理掉上报拦截器,但保留其余的拦截器,重新创建实例会新增很多不必要的工作.
 
-在`redux-db`里面,禁用掉某次请求的某个全局拦截器非常简单
+在`rexos`里面,禁用掉某次请求的某个全局拦截器非常简单
 ```
 getDataAction() {
     return {
@@ -202,7 +200,7 @@ getDataAction() {
 这需要使用者命名的规范性,比如以`before-`开头
 
 ##### 内置的拦截器
-`redux-db`还有两个内置的拦截器:
+`rexos`还有两个内置的拦截器:
 + succ
 + err
 
@@ -233,18 +231,18 @@ setTimeout(() => cancel(),1000)
 注意,即使关闭了某个请求,也会返回一个`type = fail`的`action`,但它不会对仓库造成任何影响.
 
 #### 缓存
-依赖于`localStorage`,`redux-db`提供了一些缓存策略,具体的方案你可以查阅`Google PWA Workbox`.下面只列出几个常用的策略
+依赖于`localStorage`,`rexos`提供了一些缓存策略,具体的方案你可以查阅`Google PWA Workbox`.下面只列出几个常用的策略
 + cache-first(default)
 
-    在这种情况下,`redux-db`会优先寻找缓存,不论缓存是否存在,都会向目标请求数据,并在成功后更新缓存.
+    在这种情况下,`rexos`会优先寻找缓存,不论缓存是否存在,都会向目标请求数据,并在成功后更新缓存.
 
 + network-first
 
-    在这种情况下,`redux-db`会优先请求数据,但在首次失败后,`redux-db`将不会再次请求,而是返回缓存.
+    在这种情况下,`rexos`会优先请求数据,但在首次失败后,`rexos`将不会再次请求,而是返回缓存.
 
 + network-only
 
-    在这种情况下,`redux-db`会优先请求数据,但在首次失败后,`api middleware`会直接返回一个`type:fail`的`action`
+    在这种情况下,`rexos`会优先请求数据,但在首次失败后,`api middleware`会直接返回一个`type:fail`的`action`
 ```
 getDataAction() {
     return {
@@ -259,7 +257,7 @@ getDataAction() {
 ```
 
 #### 配置
-`redux-db`提供全局配置扩展,一处修改,处处生效.
+`rexos`提供全局配置扩展,一处修改,处处生效.
 
 ```
 DB.defaults.baseUrl = ''
@@ -308,7 +306,7 @@ DB.defaults.baseUrl = ''
 
 + form-data:
 
-    如果需要上传`form-data`形式的数据,你依然需要设置`multipart:form-data`.不过不要担心,`redux-db`并不会上传这个`header`,它只是作为内部的一个标识而已.
+    如果需要上传`form-data`形式的数据,你依然需要设置`multipart:form-data`.不过不要担心,`rexos`并不会上传这个`header`,它只是作为内部的一个标识而已.
 
     甚至,你可以直接以一个构建好的`FormData`作为`data`,这样就不需要指定`header`了.
     ```
@@ -326,7 +324,7 @@ DB.defaults.baseUrl = ''
 
 
 #### cdn select
-你可以提供多个cdn,`redux-db`会选择最快的一个返回,并在后面的请求中自动切换到该cdn(这个过程用户不会感知)
+你可以提供多个cdn,`rexos`会选择最快的一个返回,并在后面的请求中自动切换到该cdn(这个过程用户不会感知)
 
 使用该功能,你需要在`action`里:
 + 注册该cdn组的`name`
@@ -343,11 +341,11 @@ getDataAction() {
     }
 }
 ```
-需要注意的是,`redux-db`只会在`session`生命周期内保存最快cdn.
+需要注意的是,`rexos`只会在`session`生命周期内保存最快cdn.
 
 ### 可能会遇到的问题
 
-上面已经提到过,`redux-db`自动池化了某些关键类,这导致了一些`response`拦截器里无法异步访问数据
+上面已经提到过,`rexos`自动池化了某些关键类,这导致了一些`response`拦截器里无法异步访问数据
 ```
 DB.interceptors.after.use(function(){
     setTimeout(_ => {
