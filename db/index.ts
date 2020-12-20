@@ -1,19 +1,41 @@
 import { getDB,DbOpts,DB } from './core'
 import dbExts from './plugins'
+import { DEV_PROXY_PORT, setDevProxyPort } from '../db/fetch'
 
-export function useDB(autoFetch:boolean,opts:DbOpts):Promise<any>;
-export function useDB(opts:DbOpts):DB;
+const startCheckPort = 25918
+function useDB(autoFetch:boolean,opts:DbOpts):Promise<any>;
+function useDB(opts:DbOpts):DB;
 
-export function useDB(...options):Promise<any> | DB {
-    let db
+function useDB(...options):Promise<any> | DB {
+    let db:DB
     const autoFetch = options[0]
-    if(typeof autoFetch === 'boolean') {
+    if(autoFetch === true) {
+        if(options[1].proxy && !DEV_PROXY_PORT) {
+            return new Promise(resolve => {
+                checkProxyServerStart(() => {
+                    db = getDB(options[1])
+                    resolve(db.execute())
+                })
+            })
+        } 
         db = getDB(options[1])
         return db.execute()
     } else {
+        if(options[1].proxy && !DEV_PROXY_PORT) {
+            return new Promise(resolve => {
+                checkProxyServerStart(() => {
+                    db = getDB(autoFetch)
+                    resolve(db)
+                })
+            })
+        }
         db = getDB(autoFetch)
         return db
     }
+}
+
+function useFetch(options:DbOpts):Promise<any> {
+    return useDB(true, options)
 }
 
 function initDbExts() {
@@ -26,7 +48,21 @@ function initDbExts() {
     }
 }
 
-export { DB }
+function checkProxyServerStart(cb:Function) {
+    checkPort(startCheckPort, cb)
+}
+
+function checkPort(port, cb) {
+    useFetch({
+        url: `localhost:${port}/check`,
+        timeout: 500,
+    }).then(() => {
+        setDevProxyPort(port)
+        cb()
+    }, () => {
+        checkPort(port + 1, cb)
+    })
+}
 
 function initWork() {
     initDbExts()
@@ -34,3 +70,8 @@ function initWork() {
 
 initWork()
 
+export { 
+    DB, 
+    useDB,
+    useFetch
+}

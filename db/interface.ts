@@ -29,7 +29,9 @@ export type AjaxArgsType = {
     // 本次请求关闭插件
     bannerPlugins ?: string[],
     // X-HTTP-Method-Override
-    isXHMO ?: boolean
+    isXHMO ?: boolean,
+    proxy ?: boolean,
+    pipe ?: any
 }
 
 export type CustomMustType = Pick<AjaxArgsType,'url'>
@@ -40,3 +42,7 @@ export type StrictAjaxArgsType = {
 
 export type CustomOptionalType = Omit<AjaxArgsType,'url'>
 
+type Port = String
+type Host = String
+type Path = String
+export type URLResolve = [Port, Host, Path]

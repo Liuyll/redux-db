@@ -1,7 +1,14 @@
-const performance = window.performance
-import { AjaxArgsType,RequestType } from './interface'
+const ENV = typeof window === 'undefined' ? 'NODE' : 'BROWSER'
+const performance = ENV === 'NODE' ? null : window.performance
+import { AjaxArgsType, RequestType, URLResolve } from './interface'
 
+export let DEV_PROXY_PORT = null
 const JSONP_SUPPORT_RETURN = '__REDUX_DB_JSONP_SUPPORT'
+
+export function setDevProxyPort(port) {
+    DEV_PROXY_PORT = port
+}
+
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
@@ -14,14 +21,22 @@ export function ajax(options:AjaxArgsType) {
             successStatusRange = [200,300],
             cancelToken,
             // add X-HTTP-Method-Override
-            isXHMO
+            isXHMO,
+            proxy,
+            pipe
         } = options
 
-        const ContentType = headers['Content-Type'] || (
-            headers['Content-Type'] = data instanceof FormData 
-                ? 'multipart/form-data' 
-                : 'application/x-www-form-urlencoded'
-        )
+        let ContentType
+        if(ENV === 'NODE') {
+            ContentType = headers['Content-Type']
+        } else {
+            ContentType = headers['Content-Type'] || (
+                headers['Content-Type'] = data instanceof FormData 
+                    ? 'multipart/form-data' 
+                    : 'application/x-www-form-urlencoded'
+            )
+        }
+        
 
         if(cancelToken) {
             cancelToken(() => {
@@ -30,6 +45,13 @@ export function ajax(options:AjaxArgsType) {
         }
 
         type = type.toUpperCase() as RequestType
+
+        if(proxy) {
+            data['origin'] = url 
+            data['method'] = type
+            url = getDevProxyUrl()
+            type = 'POST'
+        } 
 
         if(type === 'GET') {
             query = {
@@ -45,24 +67,53 @@ export function ajax(options:AjaxArgsType) {
             headers['X-HTTP-Method-Override'] = type
         }
 
-        if(typeof fetch === 'undefined') {
+        if(ENV === 'NODE') {
+            const http = require('http')
+            const [host, port, path] = resolveURL(url)
+            const httpOptions = {
+                host,
+                port,
+                path,
+                method: type,
+                headers,
+                // 暂时只支持http
+                protocol: 'http:',
+                ...timeout ? { timeout } : {}
+            }
+            const req = http.request(httpOptions,(res) => {
+                let data = ''
+                res.setEncoding('utf-8')
+                if(pipe) {
+                    res.pipe(pipe, { end: true })
+                    res.on('end', () => {
+                        resolve()
+                    })
+                } else {
+                    res.on('data', (_data) => {
+                        data += _data
+                    })
+                    res.on('end', () => {
+                        resolve({
+                            status: res.statusCode,
+                            data
+                        })
+                    })
+                }
+            })
+            req.end()
+        } else if(typeof fetch === 'undefined') {
             let xhr = new XMLHttpRequest()
-
             xhr.open(type,url,true)
-
             for(let header in headers) {
                 xhr.setRequestHeader(header,headers[header])
             }
-
 
             if(timeout) xhr.timeout = timeout
             xhr.withCredentials = withCredentials
 
             // 不为multipart/form-data设置c-t
             ContentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
-
             xhr.send(type === 'GET' ? '' : sendData) 
-
             xhr.ontimeout = () => {
                 reject({
                     status: null,
@@ -108,7 +159,6 @@ export function ajax(options:AjaxArgsType) {
                 if(typeof AbortController !== 'undefined') {
                     const controller = new AbortController()
                     opts['signal'] = controller.signal
-
                     fetchAndHandle()
 
                     setTimeout(() => {
@@ -211,4 +261,16 @@ function formatKV(data:object) {
         r += `${k}=${data[k]}&`
     }
     return r.substring(0,r.length - 1)
+}
+
+function resolveURL(url: string):URLResolve {
+    if(!url.endsWith('/')) url += '/'
+    const match = /.*:\/\/(.*?)(?::)(.*)?\/(.*)/
+    const resolved = url.match(match)
+    if(!resolved) throw Error('proxy url is not accord standard. example: http://host:port/path')
+    return [resolved[1], resolved[2], resolved[3]]
+}
+
+function getDevProxyUrl() {
+    return `http://localhost:${DEV_PROXY_PORT}/proxy`
 }

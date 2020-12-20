@@ -1,6 +1,6 @@
 import typescript from "rollup-plugin-typescript"
 
-export default {
+export default [{
     input: 'db/index.ts',
     output: [
         { name: 'rexdb', file: 'lib/rexdb.js', format: 'cjs', sourcemap: false },
@@ -12,4 +12,13 @@ export default {
             typescript: require('typescript')
         })
     ]
-}
+},{
+    input: 'server/index.ts',
+    output: { name: 'server', file: 'lib/proxy.js', format: 'cjs', sourcemap: false },
+    plugins: [
+        typescript({
+            exclude: 'node_modules/**',
+            typescript: require('typescript')
+        })
+    ]
+}]

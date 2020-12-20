@@ -328,14 +328,14 @@ class Sender implements ISender {
         this.config = this.before(this.config)
         return this.fetch(<CustomMustType>this.config).then(_ => {
             if(this.err) throw this.err
-
             // 拦截器调用的时机在回调之前,否则无法修改数据
             this.after(this.data)
             this.succeed()
             // 注意放入池子的时机,如果需要可以调用persist保持
             this.autoRelease && this.release()
 
-            return this.data
+            // 取出数据
+            return this.data.__raw || this.data
         }).catch(err => {
             this.error(err)
             throw err
@@ -374,9 +374,7 @@ class Sender implements ISender {
                 ...this.data
             }
             delete data.__race_key_
-
             this.data = data
-
             this.config.succ(data) 
         } catch({ message }) {
             try {
@@ -416,12 +414,13 @@ class Sender implements ISender {
             })
         }
        
-        return ajax({ ...opts,...extendOpt }).then(r => {
+        return ajax({ ...opts, ...extendOpt }).then(r => {
+            
             let { transformData } = this.config
             let data:string | object = _.safeJsonParse(r as any)
 
             // 对本身就是string类型的返回值不进入任何处理
-            if(data['__transform'] === 'fail') data = data['__raw'] 
+            // if(data['__transform'] === 'fail') data = data['__raw'] 
 
             if(transformData && typeof transformData === 'function') {
                 r = transformData(r)
@@ -445,7 +444,6 @@ class Sender implements ISender {
             }
             
             else err = _err
-
             injectRaceKey(err)
             this.err = err
         })
