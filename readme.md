@@ -38,6 +38,20 @@ npm install -S rexos
 + 易用的插件机制,可配置多种hooks
 + 支持链式修改`config`,链式返回`data`
 
+#### 代理
+`rexos`内置了跨域代理功能，因为`node`的一些`api`无法运行于浏览器上，所以需要配合`webpackPlugin`或者主动开启`server`。
+
++ 主动开启：
+    ```
+    const startServer = require('rexos/lib/proxy').startServer
+    startServer()
+    ```
+
++ 使用`WebpackPlugin`开启：
+    ```
+    const plugin = require('rexos/lib/proxy').rexosProxyPlugin
+    plugins.push(new plugin())
+    ```
 #### 性能:
 `rexos`池化了需要重复创建的请求实例类`DB`和请求发送类`Sender`,并且在钩子里面精确掌控了释放的时机,对用户完全透明.
 
