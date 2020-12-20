@@ -477,6 +477,7 @@ export function getSender(opts:SenderOpts) {
 }
 
 export function getDB(opts:DbOpts):DB {
+    autoAddSchemaPrefix(opts)
     if(DBPools.length) {
         let db = DBPools.pop()
         db.initConfig(opts)
@@ -485,6 +486,17 @@ export function getDB(opts:DbOpts):DB {
     else {
         const useDb = new DB(opts)
         return useDb
+    }
+}
+
+function autoAddSchemaPrefix(opts: DbOpts) {
+    const checkAndHandleUrl = (url: string) => /.*\/\//.test(url) ? url : 'http://' + url
+    if(opts.url) {
+        opts.url = checkAndHandleUrl(opts.url)
+    } else if(opts.urls) {
+        opts.urls.forEach((url,i,urls) => {
+            urls[i] = checkAndHandleUrl(url)
+        })
     }
 }
 
