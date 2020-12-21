@@ -49,3 +49,8 @@ app.get('/check', check)
 process.on('message', (port) => {
     app.listen(port)
 })
+
+export default function startProxy(port) {
+    console.log('success: rexos proxy server is start!') // eslint-disable-line
+    app.listen(port)
+}

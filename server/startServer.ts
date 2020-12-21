@@ -1,6 +1,7 @@
 import { fork } from 'child_process'
 import * as net from 'net'
 import * as path from 'path'
+import startProxy from './proxy'
 
 const startPort = 25918
 function detectPort(port: number) {
@@ -30,8 +31,7 @@ const tryUsePort = function(port,_portAvailableCallback){
 
 function startServer() {
     tryUsePort(startPort, (port) => {
-        const server = fork(path.resolve(__dirname, 'proxy'))
-        server.send(port)
+        startProxy(port)
     })
 }
 
