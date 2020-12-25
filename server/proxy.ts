@@ -10,6 +10,7 @@ app.use((req, res, next) => {
         'Access-Control-Allow-Origin': req.headers.origin || '*', 
         'Access-Control-Allow-Headers': 'X-Requested-With,Content-Type',
         'Access-Control-Allow-Methods': 'PUT,POST,GET,DELETE,OPTIONS',
+        'Access-Control-Expose-Headers': 'Content-Type',
         'Content-Type': 'application/json; charset=utf-8'
     })
     req.method === 'OPTIONS' ? res.status(204).end() : next()
@@ -50,7 +51,7 @@ process.on('message', (port) => {
     app.listen(port)
 })
 
-export default function startProxy(port) {
+export function startProxy(port) {
     console.log('success: rexos proxy server is start!') // eslint-disable-line
     app.listen(port)
 }

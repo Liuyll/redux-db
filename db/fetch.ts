@@ -69,28 +69,24 @@ export function ajax(options:AjaxArgsType) {
 
         if(ENV === 'NODE') {
             const http = require('http')
-            const [host, port, path] = resolveURL(url)
+            headers['accept-encoding'] = 'gzip, deflate'
             const httpOptions = {
-                host,
-                port,
-                path,
                 method: type,
                 headers,
-                // 暂时只支持http
-                protocol: 'http:',
                 ...timeout ? { timeout } : {}
             }
-            const req = http.request(httpOptions,(res) => {
-                let data = ''
-                res.setEncoding('utf-8')
+
+            const req = http.request(url, httpOptions,(res) => {
                 if(pipe) {
+                    pipe.set('Content-Type', 'application/octet-stream')
                     res.pipe(pipe, { end: true })
                     res.on('end', () => {
                         resolve()
                     })
                 } else {
+                    let data = Buffer.alloc(0)
                     res.on('data', (_data) => {
-                        data += _data
+                        data = Buffer.concat([data, _data])
                     })
                     res.on('end', () => {
                         resolve({
@@ -177,9 +173,18 @@ export function ajax(options:AjaxArgsType) {
             } else fetchAndHandle()
 
             function fetchAndHandle():Promise<unknown> {
-                return fetch(url,opts).then(r => handleResult(r))
+                if(proxy) opts.mode = 'cors'
+                return fetch(url,opts).then((res: Response) => {
+                    if(res.headers.get('Content-Type') == 'application/octet-stream') {
+                        return readStream(res.body)
+                    }
+                    return res
+                }).then(r => handleResult(r))
                     .then(resolve)
-                    .catch(reject)
+                    .catch(() => {
+                        debugger
+                        reject()
+                    })
             }
 
             function handleResult(res:Response) {
@@ -190,9 +195,9 @@ export function ajax(options:AjaxArgsType) {
                     'application/html': () => res.text(),
                     'application/text': () => res.text(),
                 }
-
+                
                 if(successStatusRange ? checkStatus(successStatusRange,res.status) : res.ok) {
-                    let ret = handleContentTypeMap[res.headers['contentType'] || res.headers['content-type']]
+                    let ret = handleContentTypeMap[res.headers.get('contentType') || res.headers.get('content-type')]
                     return ret && ret() || res.text()
                 } else {
                     const error = {
@@ -204,7 +209,25 @@ export function ajax(options:AjaxArgsType) {
             }
         }
     })
+}
+
+function readStream(readerStream: ReadableStream): Response {
+    const reader = readerStream.getReader()
+    const stream = new ReadableStream({
+        start(controller) {
+            const _read = () => {
+                reader.read().then(({ done, value }) => {
+                    if(done) return controller.close()
+                    controller.enqueue(value)
+                    _read()
+                })
+            }
+
+            _read()
+        }
+    })
     
+    return new Response(stream)
 }
 
 // TODO: 支持strict模式
@@ -263,9 +286,17 @@ function formatKV(data:object) {
     return r.substring(0,r.length - 1)
 }
 
+function concatTypedArray(a,b) {
+    const concated = new (a.constructor)(a.length + b.length)
+    concated.set(a, 0)
+    concated.set(b, a.length)
+    return concated
+}
+
+// 改为url解析node
 function resolveURL(url: string):URLResolve {
     if(!url.endsWith('/')) url += '/'
-    const match = /.*:\/\/(.*?)(?::)(.*)?\/(.*)/
+    const match = /.*:\/\/(.*?)(?::)?(.*)?\/(.*)/
     const resolved = url.match(match)
     if(!resolved) throw Error('proxy url is not accord standard. example: http://host:port/path')
     return [resolved[1], resolved[2], resolved[3]]

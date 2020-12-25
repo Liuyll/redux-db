@@ -1,7 +1,7 @@
 import { fork } from 'child_process'
 import * as net from 'net'
 import * as path from 'path'
-import startProxy from './proxy'
+import { startProxy } from './proxy'
 
 const startPort = 25918
 function detectPort(port: number) {
@@ -35,4 +35,22 @@ function startServer() {
     })
 }
 
-export default startServer
+function forkServer() {
+    tryUsePort(startPort, (port) => {
+        const server = fork(path.resolve(__dirname, 'proxy'), { stdio: 'ignore', detached: true })
+        server.send(port)
+        // protectServer(server)
+    })
+}
+
+function protectServer(server) {
+    server.on('exit', (code, signal) => {
+        if(signal) { forkServer() }
+    })
+}
+
+export {
+    forkServer,
+    startServer
+}
+

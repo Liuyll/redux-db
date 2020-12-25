@@ -1,4 +1,4 @@
-import startServer from './startServer'
+import { startServer } from './startServer'
 
 function rexosProxyPlugin() {
     startServer()
@@ -10,4 +10,4 @@ rexosProxyPlugin.prototype.apply = function(compile) {
     })
 }
 
-export default rexosProxyPlugin
+export { rexosProxyPlugin }

@@ -304,7 +304,6 @@ export class DB implements IDB{
 }
 
 class Sender implements ISender {
-    
     autoRelease = false
     config:SenderOpts = null
     data = null
@@ -335,7 +334,7 @@ class Sender implements ISender {
             this.autoRelease && this.release()
 
             // 取出数据
-            return this.data.__raw || this.data
+            return this.data.__raw == undefined ? this.data : this.data.__raw
         }).catch(err => {
             this.error(err)
             throw err

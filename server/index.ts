@@ -1,7 +1,8 @@
-import startServer from './startServer'
-import rexosProxyPlugin from './webpackPlugin'
+import { startServer, forkServer } from './startServer'
+import { rexosProxyPlugin } from './webpackPlugin'
 
 export {
     startServer,
+    forkServer,
     rexosProxyPlugin
 }
