@@ -414,7 +414,6 @@ class Sender implements ISender {
         }
        
         return ajax({ ...opts, ...extendOpt }).then(r => {
-            
             let { transformData } = this.config
             let data:string | object = _.safeJsonParse(r as any)
 
@@ -431,8 +430,8 @@ class Sender implements ISender {
                 window.localStorage.setItem(key, typeof data === 'object' ? _.safeJsonStringify(data) : data)
             }
 
-            injectRaceKey(data)
             this.data = data
+            injectRaceKey(data)
         }).catch((_err:object | string) => {
             let err 
             if(typeof _err !== 'object') {
