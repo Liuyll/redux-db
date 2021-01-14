@@ -2,13 +2,13 @@
   "name": "rexos",
   "version": "2.0.1",
   "description": "an ajax library",
-  "main": "lib/rexdb.js",
+  "main": "lib/rexos.js",
   "browser": {
-    "./lib/rexdb.js": "./lib/rexdb.esm.js"
+    "./lib/rexdb.js": "./lib/rexos.esm.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://git.code.oa.com/youngboyliu/redux-db"
+    "url": "https://github.com/Liuyll/rexos"
   },
   "scripts": {
     "test": "mocha -r jsdom-global/register --require ts-node/register $(find '__test__' -name '*.spec.ts')",
