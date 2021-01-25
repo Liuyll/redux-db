@@ -12,6 +12,7 @@ export function setDevProxyPort(port) {
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
+        if(!url) throw Error(`the url is missing! please check whether input url or options which include url.`)
         let sendData:string
         const {
             withCredentials,
@@ -36,7 +37,6 @@ export function ajax(options:AjaxArgsType) {
                     : 'application/x-www-form-urlencoded'
             )
         }
-        
 
         if(cancelToken) {
             cancelToken(() => {
@@ -89,9 +89,26 @@ export function ajax(options:AjaxArgsType) {
                         data = Buffer.concat([data, _data])
                     })
                     res.on('end', () => {
-                        resolve({
-                            status: res.statusCode,
-                            data
+                        // deflate
+                        new Promise(resolve => {
+                            if(res.headers['content-encoding'] === 'gzip') {
+                                const zlib = require('zlib')
+                                zlib.gunzip(data, (err, decoded) => {
+                                    if(err) reject(`decompress gzip err!
+message:${err.message}`)
+                                    resolve(decoded)
+                                })
+                            }
+                            else resolve(data)
+                        }).then(data => {
+                            let _data = data.toString()
+                            if(res.headers['content-type'] === 'application/json') {
+                                _data = JSON.parse(_data)
+                            }
+                            resolve({
+                                status: res.statusCode,
+                                data: _data
+                            })
                         })
                     })
                 }
@@ -127,10 +144,28 @@ export function ajax(options:AjaxArgsType) {
                 case XMLHttpRequest.DONE: {
                     let consume = performance.now() - requestPerfStart
 
+                    const handleResult = (data) => {
+                        const type = xhr.getResponseHeader('Content-Type')
+
+                        const handleContentTypeMap = {
+                            'application/json': () => data.json(),
+                            // 用以支持jsonp,不做任何处理
+                            'application/javascript': () => JSONP_SUPPORT_RETURN,
+                            'application/html': () => data.text(),
+                            'application/text': () => data.text(),
+                            'application/octet-stream': () => data.blob(),
+                            'text/html': () => data.text(),
+                            'text/plain': () => data.text(),
+                            'image/png': () => data.blob()
+                        }
+
+                        return handleContentTypeMap[type] ? handleContentTypeMap[type]() : data.text()
+                    }
+                    
                     checkStatus(successStatusRange,xhr.status) ? resolve({
                         ... options.perf ? { __consumeTime: consume } : {},
                         status: xhr.status,
-                        data: xhr.response
+                        data: handleResult(xhr.response)
                     }) : reject({
                         ... options.perf ? { __consumeTime: consume } : {},
                         status: xhr.status,
@@ -194,6 +229,8 @@ export function ajax(options:AjaxArgsType) {
                     'application/javascript': () => JSONP_SUPPORT_RETURN,
                     'application/html': () => res.text(),
                     'application/text': () => res.text(),
+                    'text/html': () => res.text(),
+                    'text/plain': () => res.text()
                 }
                 
                 if(successStatusRange ? checkStatus(successStatusRange,res.status) : res.ok) {

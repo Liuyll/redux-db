@@ -34,7 +34,12 @@ function useDB(...options):Promise<any> | DB {
     }
 }
 
-function useFetch(options:DbOpts):Promise<any> {
+function useFetch(url: string): Promise<any>
+function useFetch(options: DbOpts): Promise<any>
+function useFetch(options:DbOpts | string):Promise<any> {
+    if(typeof options === 'string') options = {
+        url: options
+    }
     return useDB(true, options)
 }
 
