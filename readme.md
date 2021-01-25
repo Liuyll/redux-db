@@ -82,8 +82,18 @@ npm install -S rexos
     有了`rexos`,顺带实现`preload`是非常简单的事情.值得一提的是,`preload`会优先利用`link`原生缓存图片类数据.
 
 ### API
-它基本兼容`@tencent/db`的使用
+
+#### useFetch
+`useFetch(string | DbOptions)`
 ```
+import { useFetch } from 'rexos'
+useFetch('www.baidu.com').then(data => {
+    console.log(data)
+})
+```
+默认情况下，`useFetch`接收一个`DbOptions`对象
+```
+// DbOptions
 type someProperty = {
     url:string,
     successStatusRange ?:[] | number,
@@ -108,6 +118,15 @@ type someProperty = {
     after:After[],
     ...
 }
+```
+当然，如果你只需要使用简单的`Get`请求，那么也可以使用
+```
+useFetch('www.baidu.com')
+// ==
+useFetch({
+    url: 'www.baidu.com',
+    method: 'GET'
+})
 ```
 
 #### 基础使用
