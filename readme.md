@@ -116,7 +116,8 @@ type someProperty = {
     bannerPlugins ?: string[],
     before:Before[],
     after:After[],
-    ...
+    rawUrl ?: boolean,
+    json ?: boolean
 }
 ```
 当然，如果你只需要使用简单的`Get`请求，那么也可以使用
@@ -140,7 +141,10 @@ getDataAction() {
     }
 }
 ```
+#### Content-Type
+默认的，如果你为`data`传入一个对象，且`type`不为`GET`,则`rexos`将以`application/json`的形式发送请求。
 
+如果你需要以`application/x-www-form-urlencoded`的形式传入，指定参数`form: true`
 #### transformData
 `rexos`提供了数据转换的功能,你可以通过它修改返回的数据
 

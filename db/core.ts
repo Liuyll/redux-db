@@ -46,7 +46,8 @@ export type DbOpts = {
     succ ?: Function,
     err ?: Function,
     before ?: Before[],
-    after ?: After[]
+    after ?: After[],
+    rawUrl ?: boolean
 } & CustomOptionalType
 
 
@@ -83,7 +84,7 @@ function extendConfigs<T>(configs:T,...exts:object[]):T {
         }
     }
 
-    // TODO: 字符串解析有两次判断,改用正则匹配
+    // 添加baseUrl
     if(configs['baseUrl'] !== '' && configs['url']) {
         let url = configs['url']
 
@@ -127,6 +128,7 @@ export class DB implements IDB{
         if(_.isArray(this.config)) {
             return DB.all(this.config as any)
         }
+        // cdns
         if(this.config.urls) {
             let name = this.config.name
             if(this.config.isCdnSelect && name) {
@@ -337,7 +339,7 @@ class Sender implements ISender {
             return this.data.__raw == undefined ? this.data : this.data.__raw
         }).catch(err => {
             this.error(err)
-            throw err
+            throw new FetchError(err.message, this.send) // eslint-disable-line
         })
     }
 
@@ -442,7 +444,7 @@ class Sender implements ISender {
             }
             
             else err = _err
-            injectRaceKey(err)
+            // injectRaceKey(err)
             this.err = err
         })
     }
@@ -485,7 +487,10 @@ export function getDB(opts:DbOpts):DB {
     }
 }
 
+// 自动添加http前缀
 function autoAddSchemaPrefix(opts: DbOpts) {
+    if(opts.rawUrl) return 
+
     const checkAndHandleUrl = (url: string) => /.*\/\//.test(url) ? url : 'http://' + url
     if(opts.url) {
         opts.url = checkAndHandleUrl(opts.url)
@@ -513,4 +518,12 @@ export namespace DB {
     }
 
     export let interceptors:IInterceptors
+}
+
+class FetchError extends Error {
+    constructor(msg, callee ?: Function) {
+        super(msg)
+        this.name = this.constructor.name
+        Error.captureStackTrace && Error.captureStackTrace(this, callee ? callee : this.constructor)
+    }
 }

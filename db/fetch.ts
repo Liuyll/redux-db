@@ -13,7 +13,7 @@ export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url } = options
         if(!url) throw Error(`the url is missing! please check whether input url or options which include url.`)
-        let sendData:string
+        let sendData:string 
         const {
             withCredentials,
             headers = {},
@@ -24,17 +24,18 @@ export function ajax(options:AjaxArgsType) {
             // add X-HTTP-Method-Override
             isXHMO,
             proxy,
-            pipe
+            pipe,
+            form
         } = options
 
-        let ContentType
+        let contentType
         if(ENV === 'NODE') {
-            ContentType = headers['Content-Type']
+            contentType = headers['Content-Type']
         } else {
-            ContentType = headers['Content-Type'] || (
+            contentType = headers['Content-Type'] || (
                 headers['Content-Type'] = data instanceof FormData 
                     ? 'multipart/form-data' 
-                    : 'application/x-www-form-urlencoded'
+                    : form ? 'application/x-www-form-urlencoded' : 'application/json'
             )
         }
 
@@ -60,7 +61,7 @@ export function ajax(options:AjaxArgsType) {
             }
             if(Object.keys(data).length && Object.keys(query).length) url = handleQuery(url,query)
         } else {
-            sendData = formatData(ContentType,data)
+            sendData = formatData(contentType,data)
         } 
 
         if(isXHMO) {
@@ -125,7 +126,7 @@ message:${err.message}`)
             xhr.withCredentials = withCredentials
 
             // 不为multipart/form-data设置c-t
-            ContentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',ContentType ? ContentType : type === 'POST' ? 'application/x-www-form-urlencoded' : 'application/json')
+            contentType !== 'multipart/form-data' && xhr.setRequestHeader('Content-Type',contentType)
             xhr.send(type === 'GET' ? '' : sendData) 
             xhr.ontimeout = () => {
                 reject({
@@ -176,6 +177,9 @@ message:${err.message}`)
                 }
             }
         } else {
+            // form-data 由浏览器自行处理
+            if(contentType === 'multipart/form-data') delete headers['Content-Type']
+
             const opts:RequestInit = {
                 headers,
                 method: type,
@@ -184,7 +188,6 @@ message:${err.message}`)
                 credentials: handleCredentials(withCredentials)
             }
 
-            if(ContentType === 'multipart/form-data') delete headers['Content-Type']
 
             if(timeout) {
                 if(typeof AbortController !== 'undefined') {
@@ -216,9 +219,8 @@ message:${err.message}`)
                     return res
                 }).then(r => handleResult(r))
                     .then(resolve)
-                    .catch(() => {
-                        debugger
-                        reject()
+                    .catch(e => {
+                        reject(e)
                     })
             }
 
@@ -241,6 +243,7 @@ message:${err.message}`)
                         state: 'fail',
                         status: res.status,
                     }
+  
                     throw new Error(JSON.stringify(error))
                 }
             }
@@ -321,22 +324,6 @@ function formatKV(data:object) {
         r += `${k}=${data[k]}&`
     }
     return r.substring(0,r.length - 1)
-}
-
-function concatTypedArray(a,b) {
-    const concated = new (a.constructor)(a.length + b.length)
-    concated.set(a, 0)
-    concated.set(b, a.length)
-    return concated
-}
-
-// 改为url解析node
-function resolveURL(url: string):URLResolve {
-    if(!url.endsWith('/')) url += '/'
-    const match = /.*:\/\/(.*?)(?::)?(.*)?\/(.*)/
-    const resolved = url.match(match)
-    if(!resolved) throw Error('proxy url is not accord standard. example: http://host:port/path')
-    return [resolved[1], resolved[2], resolved[3]]
 }
 
 function getDevProxyUrl() {
