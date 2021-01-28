@@ -146,7 +146,7 @@ message:${err.message}`)
                     let consume = performance.now() - requestPerfStart
 
                     const handleResult = (data) => {
-                        const type = xhr.getResponseHeader('Content-Type')
+                        let type = xhr.getResponseHeader('Content-Type')
 
                         const handleContentTypeMap = {
                             'application/json': () => data.json(),
@@ -160,6 +160,11 @@ message:${err.message}`)
                             'image/png': () => data.blob()
                         }
 
+                        const handleGeneralType = (type) => {
+                            if(type.includes("application/json")) type = 'application/json'
+                            return type
+                        }
+                        type = handleGeneralType(type)
                         return handleContentTypeMap[type] ? handleContentTypeMap[type]() : data.text()
                     }
                     
@@ -236,8 +241,16 @@ message:${err.message}`)
                 }
                 
                 if(successStatusRange ? checkStatus(successStatusRange,res.status) : res.ok) {
-                    let ret = handleContentTypeMap[res.headers.get('contentType') || res.headers.get('content-type')]
-                    return ret && ret() || res.text()
+                    const handleGeneralType = (type) => {
+                        if(type.includes("application/json")) type = 'application/json'
+                        return type
+                    }
+                    const type = handleGeneralType(res.headers.get('contentType') || res.headers.get('content-type'))
+                    const ret = handleContentTypeMap[type]
+                    const data = ret && ret() || res.text()
+                    return data.then(_data => {
+                        return res['data'] = _data, res
+                    })
                 } else {
                     const error = {
                         state: 'fail',

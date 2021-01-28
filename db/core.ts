@@ -370,25 +370,21 @@ class Sender implements ISender {
     }
 
     succeed() {
-        try {            
-            let data = {
-                ...this.data
-            }
-            delete data.__race_key_
-            this.data = data
-            this.config.succ(data) 
+        try {      
+            delete this.data.__race_key_    
+            this.config.succ?.(this.data) 
         } catch({ message }) {
             try {
                 let ret = _.safeJsonParse(message)
                 if(ret['type'] === CONVERT_TO_FALSE) this.error(ret)
             } catch(e) {
-                new Error(e.message)
+                throw new Error(e.message)
             }
         }
     }
 
     error(err){
-        this.config.err && this.config.err.forEach(cb => {
+        Array.isArray(this.config.err) && this.config.err.forEach(cb => {
             cb.call(this,err)
         })
     }
@@ -417,13 +413,15 @@ class Sender implements ISender {
        
         return ajax({ ...opts, ...extendOpt }).then(r => {
             let { transformData } = this.config
-            let data:string | object = _.safeJsonParse(r as any)
+            let data = r['data']
+            injectRaceKey(r)
 
             // 对本身就是string类型的返回值不进入任何处理
             // if(data['__transform'] === 'fail') data = data['__raw'] 
 
             if(transformData && typeof transformData === 'function') {
-                r = transformData(r)
+                data = transformData(data)
+                r['data'] = data
             } else new Error('transformData isn\'t a function')
 
             // 在注入race key之前缓存
@@ -432,8 +430,8 @@ class Sender implements ISender {
                 window.localStorage.setItem(key, typeof data === 'object' ? _.safeJsonStringify(data) : data)
             }
 
-            this.data = data
-            injectRaceKey(data)
+            this.data = r
+            // injectRaceKey(data)
         }).catch((_err:object | string) => {
             let err 
             if(typeof _err !== 'object') {
