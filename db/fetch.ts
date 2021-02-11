@@ -11,7 +11,7 @@ export function setDevProxyPort(port) {
 
 export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
-        let { data = {},type,query = {},url } = options
+        let { data = {},type,query = {},url, agent } = options
         if(!url) throw Error(`the url is missing! please check whether input url or options which include url.`)
         let sendData:string 
         const {
@@ -70,11 +70,13 @@ export function ajax(options:AjaxArgsType) {
 
         if(ENV === 'NODE') {
             const http = require('http')
+            if(agent == undefined) agent = http.globalAgent
             headers['accept-encoding'] = 'gzip, deflate'
             const httpOptions = {
                 method: type,
                 headers,
-                ...timeout ? { timeout } : {}
+                ...timeout ? { timeout } : {},
+                agent
             }
 
             const req = http.request(url, httpOptions,(res) => {

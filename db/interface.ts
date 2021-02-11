@@ -39,7 +39,8 @@ export type AjaxArgsType = {
     isXHMO ?: boolean,
     proxy ?: boolean,
     pipe ?: any
-    form ?: boolean
+    form ?: boolean,
+    agent ?: Object | boolean
 }
 
 export type CustomMustType = Pick<AjaxArgsType,'url'>
