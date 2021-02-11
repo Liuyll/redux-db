@@ -1,4 +1,4 @@
-import { CustomMustType,CustomOptionalType } from './interface'
+import { CustomMustType,CustomOptionalType, IUrl } from './interface'
 import { ajax } from './fetch'
 import _ from '../utils'
 
@@ -125,6 +125,9 @@ export class DB implements IDB{
      * 兼容urls race | all发送
      */
     execute() {
+        if(this.config.method) {
+            this.config.type = this.config.method
+        }
         if(_.isArray(this.config)) {
             return DB.all(this.config as any)
         }
@@ -303,6 +306,14 @@ export class DB implements IDB{
         const t = name + enableKey
         this.options[t] = true
     }
+
+    static global(globalConfigs) {
+        const extendConfig = (localConfigs) => {
+            _.extend(globalConfigs, localConfigs, true)
+            return globalConfigs
+        }
+        this.interceptors.before.use(extendConfig, 'mergeGlobalConfigs')
+    }
 }
 
 class Sender implements ISender {
@@ -327,6 +338,7 @@ class Sender implements ISender {
 
     send() {
         this.config = this.before(this.config)
+        autoAddSchemaPrefix(this.config as IUrl)
         return this.fetch(<CustomMustType>this.config).then(_ => {
             if(this.err) throw this.err
             // 拦截器调用的时机在回调之前,否则无法修改数据
@@ -473,7 +485,6 @@ export function getSender(opts:SenderOpts) {
 }
 
 export function getDB(opts:DbOpts):DB {
-    autoAddSchemaPrefix(opts)
     if(DBPools.length) {
         let db = DBPools.pop()
         db.initConfig(opts)
@@ -486,7 +497,7 @@ export function getDB(opts:DbOpts):DB {
 }
 
 // 自动添加http前缀
-function autoAddSchemaPrefix(opts: DbOpts) {
+function autoAddSchemaPrefix(opts: IUrl) {
     if(opts.rawUrl) return 
 
     const checkAndHandleUrl = (url: string) => /.*\/\//.test(url) ? url : 'http://' + url

@@ -1,4 +1,4 @@
-export type RequestType = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'get' | 'post' | 'put' | 'delete' 
+export type RequestType = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'get' | 'post' | 'put' | 'delete' | 'head' | 'options'
 type CacheType = RequestCache
 
 interface HeadersType {
@@ -9,11 +9,18 @@ interface IUpdateCache {
     key:string
 }
 
+interface IUrl {
+    urls ?: string[]
+    url ?: string,
+    rawUrl ?: boolean
+}
+
 export type AjaxArgsType = {
     url:string,
     successStatusRange ?:[] | number,
     data ?:object,
     type ?:RequestType,
+    method ?: RequestType,
     query ?: object,
     // DB.race | DB.all
     // 'Content-Type' ?: string,
@@ -47,3 +54,7 @@ type Port = String
 type Host = String
 type Path = String
 export type URLResolve = [Port, Host, Path]
+
+export {
+    IUrl,
+}

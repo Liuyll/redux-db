@@ -130,7 +130,26 @@ useFetch({
 })
 ```
 
-#### 基础使用
+#### global
+`global`支持全局修改rexos的配置
+```
+import rexos from 'rexos'
+rexos.global({
+    rawUrl: true
+})
+```
+
+同时，global支持深层合并配置，你可以指定任意一层的配置
+```
+rexos.global({
+    headers: {
+        authorization: "token"
+    }
+})
+```
+
+### 特性
+#### 配合redux
 与`@tencent/db`一致,`rexos`提供了取数中间件,你可以以一个模块的形式维护数据
 ```
 getDataAction() {

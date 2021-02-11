@@ -82,7 +82,7 @@ export function ajax(options:AjaxArgsType) {
                     pipe.set('Content-Type', 'application/octet-stream')
                     res.pipe(pipe, { end: true })
                     res.on('end', () => {
-                        resolve()
+                        resolve(void 0)
                     })
                 } else {
                     let data = Buffer.alloc(0)
@@ -146,7 +146,7 @@ message:${err.message}`)
                     let consume = performance.now() - requestPerfStart
 
                     const handleResult = (data) => {
-                        let type = xhr.getResponseHeader('Content-Type')
+                        let type = xhr.getResponseHeader('Content-Type') || ""
 
                         const handleContentTypeMap = {
                             'application/json': () => data.json(),
@@ -245,7 +245,7 @@ message:${err.message}`)
                         if(type.includes("application/json")) type = 'application/json'
                         return type
                     }
-                    const type = handleGeneralType(res.headers.get('contentType') || res.headers.get('content-type'))
+                    const type = handleGeneralType(res.headers.get('contentType') || res.headers.get('content-type') || "") 
                     const ret = handleContentTypeMap[type]
                     const data = ret && ret() || res.text()
                     return data.then(_data => {

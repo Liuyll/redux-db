@@ -80,3 +80,5 @@ export {
     useDB,
     useFetch
 }
+
+export default DB

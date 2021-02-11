@@ -1,15 +1,26 @@
 interface IUtils {
-    extend(target:unknown,ext:object)
+    extend(target:unknown,ext:object, isDeep ?: boolean)
     safeJsonParse(target:string):object
     safeJsonStringify(target:object): string
     isSupportPreload():boolean
     isArray<T=any>(t):t is Array<T>
+    isObject<T=any>(t):t is Object
 }
 
-function extend(target:unknown,exts:object) {
+function extend(target:unknown,exts:object, isDeep:boolean = false) {
     for(let ext in exts) {
+        if(isDeep) {
+            if(Object.prototype.hasOwnProperty.call(target, ext) && isObject(target[ext]) && isObject(exts[ext])) {
+                extend(target[ext], exts[ext], true)
+                continue
+            }
+        }
         target[ext] = exts[ext]
     }
+}
+
+function isObject<T=any>(t: any):t is Object{
+    return Object.prototype.toString.call(t) === '[object Object]'
 }
 
 function isArray<T=any>(t:any):t is Array<T>{
@@ -48,6 +59,7 @@ function isSupportPreload() {
 
 const _:IUtils = {
     isArray,
+    isObject,
     extend,
     safeJsonParse,
     isSupportPreload,
