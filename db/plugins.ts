@@ -31,7 +31,7 @@ const SenderInterceptors = {
     }
 }
 
-_.extend(DB,{
+_.extend(DB, {
     interceptors: SenderInterceptors.interceptors
 })
 

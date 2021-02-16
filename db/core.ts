@@ -309,8 +309,15 @@ export class DB implements IDB{
 
     static global(globalConfigs) {
         const extendConfig = (localConfigs) => {
-            _.extend(globalConfigs, localConfigs, true)
-            return globalConfigs
+            let globalConfigs2
+            try {
+                globalConfigs2 = JSON.parse(JSON.stringify(globalConfigs))
+            } catch(err) {
+                throw Error(`global config must be object!`)
+            }
+            
+            _.extend(globalConfigs2, localConfigs, true)
+            return globalConfigs2
         }
         this.interceptors.before.use(extendConfig, 'mergeGlobalConfigs')
     }
@@ -365,8 +372,7 @@ class Sender implements ISender {
                 `)
                 throw e
             }
-            
-        },config) : config
+        }, config) : config
     }
 
     // transform data before processSucc callback
