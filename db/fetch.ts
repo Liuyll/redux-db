@@ -1,9 +1,10 @@
 const ENV = typeof window === 'undefined' ? 'NODE' : 'BROWSER'
 const performance = ENV === 'NODE' ? null : window.performance
-import { AjaxArgsType, RequestType, URLResolve } from './interface'
+import { AjaxArgsType, RequestType } from './interface'
 
 export let DEV_PROXY_PORT = null
 const JSONP_SUPPORT_RETURN = '__REDUX_DB_JSONP_SUPPORT'
+const BoundaryKey = "----rexos_boundary_node"
 
 export function setDevProxyPort(port) {
     DEV_PROXY_PORT = port
@@ -116,6 +117,8 @@ message:${err.message}`)
                     })
                 }
             })
+
+            if(contentType === 'multipart/form-data') buildMultipartFormDataOnNode(sendData, httpOptions, req)
             req.end()
         } else if(typeof fetch === 'undefined') {
             let xhr = new XMLHttpRequest()
@@ -218,7 +221,9 @@ message:${err.message}`)
             } else fetchAndHandle()
 
             function fetchAndHandle():Promise<unknown> {
-                if(proxy) opts.mode = 'cors'
+                if(typeof URL !== undefined && getCurrentOrigin(location.href) !== getCurrentOrigin(url)) {
+                    opts.mode = 'cors'
+                }
                 return fetch(url,opts).then((res: Response) => {
                     if(res.headers.get('Content-Type') == 'application/octet-stream') {
                         return readStream(res.body)
@@ -343,4 +348,26 @@ function formatKV(data:object) {
 
 function getDevProxyUrl() {
     return `http://localhost:${DEV_PROXY_PORT}/proxy`
+}
+
+function getCurrentOrigin(href) {
+    return new URL(href).origin
+}
+
+function buildMultipartFormDataOnNode(datas, options, req) {
+    const boundary = '--' + BoundaryKey
+    const endBoundary = boundary + '--'
+    options.headers['Content-Type'] =  `multipart/form-data; boundary=${BoundaryKey}`
+
+    let body = boundary + '\r\n'
+    for(const [key, value] of Object.entries(datas)) {
+        body += (`Content-Disposition: form-data; name="${key}"` + '\r\n\r\n')
+        body += value + '\r\n'
+        body += boundary + '\r\n'
+    }
+
+    body += '\r\n' 
+    body += endBoundary
+
+    req.write(body)
 }
