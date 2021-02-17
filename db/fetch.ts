@@ -14,7 +14,7 @@ export function ajax(options:AjaxArgsType) {
     return new Promise((resolve,reject) => {
         let { data = {},type,query = {},url, agent } = options
         if(!url) throw Error(`the url is missing! please check whether input url or options which include url.`)
-        let sendData:string 
+        let sendData:string | FormData
         const {
             withCredentials,
             headers = {},
@@ -118,7 +118,7 @@ message:${err.message}`)
                 }
             })
 
-            if(contentType === 'multipart/form-data') buildMultipartFormDataOnNode(sendData, httpOptions, req)
+            if(contentType === 'multipart/form-data') buildMultipartFormDataOnNode(sendData as FormData, httpOptions, req)
             req.end()
         } else if(typeof fetch === 'undefined') {
             let xhr = new XMLHttpRequest()
@@ -309,7 +309,7 @@ function checkStatus(range,status):boolean {
     return range === status ? true : false
 }
 
-function formatData(type:string,data:object):string{
+function formatData(type:string,data:object):string | FormData {
     let r 
     switch(type) {
     case 'multipart/form-data': {
@@ -354,7 +354,7 @@ function getCurrentOrigin(href) {
     return new URL(href).origin
 }
 
-function buildMultipartFormDataOnNode(datas, options, req) {
+function buildMultipartFormDataOnNode(datas:FormData, options, req) {
     const boundary = '--' + BoundaryKey
     const endBoundary = boundary + '--'
     options.headers['Content-Type'] =  `multipart/form-data; boundary=${BoundaryKey}`

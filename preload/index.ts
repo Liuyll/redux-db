@@ -13,13 +13,18 @@ type urlsType = {
     urls: string[]
 }
 
-type uousType<
-    T,
-    I = (urlType | urlsType),
-    E = (urlType & urlsType),
-    O = T extends I ? T : never,
-    K = T extends E ? T & O : T,
-> = K
+// type uousType<
+//     T,
+//     I = (urlType | urlsType),
+//     E = (urlType & urlsType),
+//     O = T extends I ? T : never,
+//     K = T extends E ? T & O : T,
+// > = K
+
+type uousType = {
+    urls: string[],
+    url: string
+}
 
 type _PreloadOpts = Omit<DbOpts,'url'> & {
     cacheKey ?: CacheKey
@@ -28,7 +33,7 @@ type _PreloadOpts = Omit<DbOpts,'url'> & {
 
 declare var window:Window & {Preload:IPreload}
 
-type PreloadOpts<T> = _PreloadOpts & uousType<T>
+type PreloadOpts<T> = _PreloadOpts & uousType
 
 export interface IPreload {
     dataMap: Map<CacheKey,any>

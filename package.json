@@ -3,8 +3,9 @@
   "version": "2.0.3",
   "description": "an ajax library",
   "main": "./lib/rexos.js",
-  "browser": "./lib/rexos.esm.mjs", 
+  "browser": "./lib/rexos.esm.mjs",
   "module": "./lib/rexos.js",
+  "typings": "./dist/db/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/Liuyll/rexos"

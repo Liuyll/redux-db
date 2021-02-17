@@ -1,18 +1,20 @@
 {
     "compilerOptions": {
-    "module": "commonjs",
-    "experimentalDecorators": true,
-    "esModuleInterop": true,
-    "target": "ES6",
-    "lib": ["es6","ES2016.Array.Include","dom"],
-    "jsx":"react",
-    "allowSyntheticDefaultImports": true,
+        "module": "commonjs",
+        "experimentalDecorators": true,
+        "esModuleInterop": true,
+        "target": "ES6",
+        "lib": ["es6","ES2016.Array.Include","dom"],
+        "jsx":"react",
+        "allowSyntheticDefaultImports": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "outDir": "./dist"
     },
     "include": [
         "db/**/*",
-        "preload/**/*"
     ],
     "exclude": [
         "node_modules"
-    ]
+    ],
 }
