@@ -221,7 +221,7 @@ message:${err.message}`)
             } else fetchAndHandle()
 
             function fetchAndHandle():Promise<unknown> {
-                if(typeof URL !== undefined && getCurrentOrigin(location.href) !== getCurrentOrigin(url)) {
+                if(typeof URL !== 'undefined' && getCurrentOrigin(location.href) !== getCurrentOrigin(url)) {
                     opts.mode = 'cors'
                 }
                 return fetch(url,opts).then((res: Response) => {
@@ -351,7 +351,11 @@ function getDevProxyUrl() {
 }
 
 function getCurrentOrigin(href) {
-    return new URL(href).origin
+    try {
+        return new URL(href).origin
+    } catch(e) {
+        return Symbol('false')
+    }
 }
 
 function buildMultipartFormDataOnNode(datas:FormData, options, req) {

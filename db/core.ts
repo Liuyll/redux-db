@@ -47,7 +47,8 @@ export type DbOpts = {
     err ?: Function,
     before ?: Before[],
     after ?: After[],
-    rawUrl ?: boolean
+    rawUrl ?: boolean,
+    debug ?: boolean
 } & CustomOptionalType
 
 
@@ -358,7 +359,7 @@ class Sender implements ISender {
             return this.data.__raw == undefined ? this.data : this.data.__raw
         }).catch(err => {
             this.error(err)
-            throw new FetchError(err.message, this.send) // eslint-disable-line
+            throw new FetchError(err.message, this.send, this.config.debug) // eslint-disable-line
         })
     }
 
@@ -536,9 +537,10 @@ export namespace DB {
 }
 
 class FetchError extends Error {
-    constructor(msg, callee ?: Function) {
+    constructor(msg, callee ?: Function, debug:boolean = false) {
         super(msg)
         this.name = this.constructor.name
+        if(debug) return
         Error.captureStackTrace && Error.captureStackTrace(this, callee ? callee : this.constructor)
     }
 }
